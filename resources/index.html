@@ -7,39 +7,50 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <div id="app">
-    <header class="top-nav">
-      <div class="day">Monday</div>
-      <div class="day">Tuesday</div>
-      <div class="day">Wednesday</div>
-      <div class="day active">TODAY</div>
-      <div class="day">Friday</div>
-      <div class="day">Saturday</div>
-      <div class="day">Sunday</div>
+  <div id="app" class="wrapper">
+    <header id="navbar">
+      <div class="days">
+        <span data-day="1" class="day">Monday</span>
+        <span data-day="2" class="day">Tuesday</span>
+        <span data-day="3" class="day">Wednesday</span>
 
-      <section class="date-time">
-        <div class="date">dd.mm.yyyy</div>
-        <div class="time">20:31</div>
-      </section>
+        <span data-day="today" class="day active">TODAY</span>
 
+        <span data-day="5" class="day">Friday</span>
+        <span data-day="6" class="day">Saturday</span>
+        <span data-day="7" class="day">Sunday</span>
+      </div>
+
+      <div class="line-wrapper">
+        <div class="line-solid"></div>
+        <div class="line-dashed"></div>
+      </div>
+
+      <div class="center-date" id="date"></div>
+      <div class="center-time" id="time"></div>
     </header>
-
 
     <main class="task-list">
       <div class="task-item">
-        <div class="task-text">Example task</div>
+        <div class="task-text"></div>
         <div class="task-status"></div>
       </div>
+
+      <button class="add-task-button">
+        <img src="/assets/icons/addTask.png"/>
+      </button>
     </main>
+      
 
     <footer class="bottom-bar">
-      <button id="open-settings" class="icon-btn settings">⚙️</button>
-      <button id="open-add-task" class="icon-btn add">＋</button>
-      <button id="open-summary" class="icon-btn summary">📊</button>
+      <button class="settings-button">
+        <img src="/assets/icons/settings.png"/>
+      </button>
     </footer>
   </div>
 
   <script src="/js/neutralino.js"></script>
   <script src="/js/main.js"></script>
+  <script src="/js/navbar.js"></script>
 </body>
 </html>

@@ -1,7 +1,6 @@
 /* Main Page Styles based on Figma design */
 
 body {
-  background-color: #2b2e2f;
   color: #e5e5e5;
   font-family: "Inter", sans-serif;
   margin: 0;
@@ -9,45 +8,86 @@ body {
   user-select: none;
 }
 
-header {
+.wrapper {
   display: flex;
-  justify-content: center;
-  gap: 48px;
-  padding: 22px 0;
-  border-bottom: 1px solid #7f8487;
-  font-size: 26px;
+  flex-direction: column;
+
+  height: 100vh;
+  width: 100vw;
+
+  background-color: #2b2e2f;
+}
+
+header {
+  padding-top: 24px;
+  padding-bottom: 10px;
+  text-align: center;
+  position: relative;
+
+  width: 100%;
+}
+
+.days {
+  display: flex;
+  justify-content:space-around;
+  gap: 55px;
+  font-size: 28px;
   letter-spacing: 1px;
 }
 
-header .day {
+.day {
   opacity: 0.45;
   cursor: pointer;
   transition: 0.3s ease;
-  font-size: 36px;
-  font-weight: 100;
 }
 
-header .day:hover {
-  opacity: 0.7;
-}
-
-header .day.active {
+.day.active {
+  position: fixed;
   opacity: 1;
   font-weight: 500;
 }
 
-.center-date {
-  text-align: center;
-  margin-top: 10px;
-  font-size: 14px;
+.day:hover {
   opacity: 0.7;
 }
 
+.center-date {
+  margin-top: 8px;
+  font-size: 16px;
+  opacity: 0.75;
+}
+
 .center-time {
-  text-align: center;
-  margin-top: 4px;
-  font-size: 22px;
-  opacity: 0.85;
+  margin-top: 2px;
+  font-size: 26px;
+  opacity: 0.9;
+}
+
+
+.line-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.line-solid {
+  height: 1px;
+  width: 55%;
+  border-bottom: 1px solid #cfcfcf;
+}
+
+.line-dashed {
+  height: 1px;
+  width: 45%;
+  border-bottom: 1px dashed #cfcfcf;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 #tasks-container {
@@ -94,33 +134,29 @@ header .day.active {
   margin-top: 10px;
 }
 
-.add-task-button {
-  width: 48px;
-  height: 48px;
-  border: 1px solid #d4d4d4;
-  border-radius: 50%;
+footer {
+  margin-top: auto;
   display: flex;
-  justify-content: center;
+  flex-direction: row;
   align-items: center;
-  font-size: 34px;
-  margin: 50px auto;
-  cursor: pointer;
-  transition: 0.2s ease;
+  justify-content:flex-end;
 }
 
-.add-task-button:hover {
-  background-color: rgba(255,255,255,0.05);
+footer .settins-button {
+  margin-left: 100%;
 }
 
-.settings-button {
-  position: fixed;
-  right: 22px;
-  bottom: 22px;
-  cursor: pointer;
-  opacity: 0.6;
-  transition: 0.2s;
+
+button {
+  background: none;
+  border: none;
 }
 
-.settings-button:hover {
-  opacity: 1;
+button:active {
+  opacity: 0.5;
+  transform: translateY(2px);
 }
+
+
+
+
