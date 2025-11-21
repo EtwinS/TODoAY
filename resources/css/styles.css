@@ -90,7 +90,7 @@ main {
   justify-content: flex-start;
 }
 
-#tasks-container {
+/* #tasks-container {
   width: 72%;
   margin-top: 60px;
   border: 1px solid #a0a0a0;
@@ -132,7 +132,7 @@ main {
 .subtasks-block {
   padding-left: 20px;
   margin-top: 10px;
-}
+} */
 
 footer {
   margin-top: auto;
@@ -148,6 +148,7 @@ footer .settins-button {
 
 
 button {
+  padding: 0px;
   background: none;
   border: none;
 }

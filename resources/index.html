@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Todo App</title>
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/modal.css" />
+  <link rel="stylesheet" href="css/task.css" />
 </head>
 <body>
   <div id="app" class="wrapper">
@@ -31,12 +33,34 @@
     </header>
 
     <main class="task-list">
-      <div class="task-item">
-        <div class="task-text"></div>
-        <div class="task-status"></div>
-      </div>
+      <div id="taskContainer" class="task-container"></div>
 
-      <button class="add-task-button">
+      <dialog id="modal">
+        <div class="modal-wrapper">
+          <input 
+            id="taskTitle" 
+            type="text" 
+            class="input"
+            placeholder="Title of the task"
+          >
+
+          <textarea 
+            id="taskDescription" 
+            class="textarea"
+            placeholder="description"
+          ></textarea>
+
+          <button id="addSubtaskBtn" class="add-task-button">
+            <img src="/assets/icons/addTask.png"/>
+          </button>
+
+          <div class="center">
+              <button id="closeModal" class="create-task-button">Create</button>
+          </div>
+        </div>
+      </dialog>
+
+      <button id="opneModal" class="add-task-button">
         <img src="/assets/icons/addTask.png"/>
       </button>
     </main>
@@ -50,7 +74,11 @@
   </div>
 
   <script src="/js/neutralino.js"></script>
+  <script src="/libs/pouchdb-9.0.0.min.js"></script>
+  <script type="module" src="/js/pouchDB.js"></script>
   <script src="/js/main.js"></script>
-  <script src="/js/navbar.js"></script>
+  <script type="module" src="/js/navbar.js"></script>
+  <script type="module" src="/js/modal.js"></script>
+  <script type="module" src="/js/task.js"></script>
 </body>
 </html>

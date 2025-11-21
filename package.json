@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@neutralinojs/neu": "^11.6.0"
+    "@neutralinojs/neu": "^11.6.0",
+    "pouchdb": "^9.0.0"
   }
 }
