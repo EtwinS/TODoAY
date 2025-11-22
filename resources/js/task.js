@@ -1,4 +1,5 @@
 import { localDB } from "./pouchDB.js";
+import { openModalForEdit, closeModal } from "./modal.js";
 
 export async function createTask() {
     const title = document.getElementById("taskTitle").value.trim();
@@ -20,23 +21,42 @@ export async function createTask() {
     };
 
     try {
-        const response = await localDB.put(task);
-        console.log("Task saved:", response);
+        await localDB.put(task);
+        console.log("Task saved:", task);
 
-        // очистка полей
         document.getElementById("taskTitle").value = "";
         document.getElementById("taskDescription").value = "";
 
-        // закрыть модалку
-        document.getElementById("modal").close();
-
-        // обновить UI (функция создадим позже)
-        if (window.loadTasks) {
-            loadTasks();
-        }
+        closeModal();
+        loadTasks();
 
     } catch (err) {
         console.error("Error saving task:", err);
+    }
+}
+
+export async function editTask(taskId) {
+    const title = document.getElementById("taskTitle").value.trim();
+    const description = document.getElementById("taskDescription").value.trim();
+
+    if (!title) {
+        alert("Please enter task title");
+        return;
+    }
+
+    try {
+        const task = await localDB.get(taskId);
+        task.title = title;
+        task.description = description;
+        task.updatedAt = new Date().toISOString();
+        await localDB.put(task);
+        console.log("Task updated:", task);
+
+        closeModal();
+        loadTasks();
+
+    } catch (err) {
+        console.error("Error updating task:", err);
     }
 }
 
@@ -61,11 +81,17 @@ export async function loadTasks() {
 
                 <div class="task-text">
                     <p>${task.title}</p>
-                    <!-- <p>${task.description || ""}</p> -->
                 </div> 
             `;
 
-            // обработчик галочки
+            // Click to edit
+            item.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'INPUT') {
+                    openModalForEdit(task._id, task.title, task.description);
+                }
+            });
+
+            // Checkbox handler
             item.querySelector("input").addEventListener("change", async (e) => {
                 try {
                     const fresh = await localDB.get(task._id); // получаем актуальную версию
@@ -86,4 +112,4 @@ export async function loadTasks() {
 }
 
 window.loadTasks = loadTasks;
-window.addEventListener('DOMContentLoaded', loadTasks)
+window.addEventListener('DOMContentLoaded', loadTasks);
