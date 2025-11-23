@@ -1,5 +1,6 @@
 import { localDB } from "./pouchDB.js";
 import { openModalForEdit, closeModal } from "./modal.js";
+import { getSelectedDate } from "./navbar.js";
 
 export async function createTask() {
     const title = document.getElementById("taskTitle").value.trim();
@@ -10,11 +11,14 @@ export async function createTask() {
         return;
     }
 
+    // Use selected date from navbar, not current date
+    const taskDate = getSelectedDate();
+
     const task = {
-        _id: "task_" + new Date().getTime() + "_" + Math.random().toString(36).substring(2,8),
+        _id: "task_" + new Date().getTime() + "_" + Math.random().toString(36).substring(2, 8),
         title,
         description,
-        createdAt: new Date().toISOString(),
+        createdAt: taskDate.toISOString(),
         updatedAt: new Date().toISOString(),
         completed: false,
         deleted: false
@@ -28,7 +32,7 @@ export async function createTask() {
         document.getElementById("taskDescription").value = "";
 
         closeModal();
-        loadTasks();
+        loadTasks(taskDate);
 
     } catch (err) {
         console.error("Error saving task:", err);
@@ -53,22 +57,42 @@ export async function editTask(taskId) {
         console.log("Task updated:", task);
 
         closeModal();
-        loadTasks();
+        loadTasks(task.createdAt ? new Date(task.createdAt) : new Date());
 
     } catch (err) {
         console.error("Error updating task:", err);
     }
 }
 
-export async function loadTasks() {
+export async function loadTasks(filterDate = null) {
     const container = document.getElementById("taskContainer");
-    container.innerHTML = ""; // очистить старый вывод
+    container.innerHTML = "";
 
     try {
         const result = await localDB.allDocs({ include_docs: true });
-        const tasks = result.rows.map(row => row.doc).filter(doc => !doc.deleted);
+        let tasks = result.rows.map(row => row.doc).filter(doc => !doc.deleted);
+
+        // Filter by date if provided
+        if (filterDate) {
+            const filterDateKey = filterDate instanceof Date 
+                ? filterDate.toISOString().split('T')[0]
+                : new Date(filterDate).toISOString().split('T')[0];
+            
+            tasks = tasks.filter(task => {
+                const taskDateKey = new Date(task.createdAt).toISOString().split('T')[0];
+                return taskDateKey === filterDateKey;
+            });
+        }
 
         tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        if (tasks.length === 0) {
+            const emptyMsg = document.createElement("div");
+            emptyMsg.className = "empty-message";
+            emptyMsg.textContent = "No tasks for this day";
+            container.appendChild(emptyMsg);
+            return;
+        }
 
         tasks.forEach(task => {
             const item = document.createElement("div");
@@ -94,7 +118,7 @@ export async function loadTasks() {
             // Checkbox handler
             item.querySelector("input").addEventListener("change", async (e) => {
                 try {
-                    const fresh = await localDB.get(task._id); // получаем актуальную версию
+                    const fresh = await localDB.get(task._id);
                     fresh.completed = e.target.checked;
                     fresh.updatedAt = new Date().toISOString();
                     await localDB.put(fresh);
@@ -112,4 +136,4 @@ export async function loadTasks() {
 }
 
 window.loadTasks = loadTasks;
-window.addEventListener('DOMContentLoaded', loadTasks);
+window.addEventListener('DOMContentLoaded', () => loadTasks(new Date()));
