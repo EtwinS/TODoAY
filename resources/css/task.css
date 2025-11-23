@@ -4,8 +4,8 @@
     align-items: flex-start;
     justify-content: flex-start;
 
-    min-width: 807px;
-    min-height: 622px;
+    width: 807px;
+    height: 622px;
     gap: 7px;
     margin-top: 20px;
 

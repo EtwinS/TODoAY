@@ -1,11 +1,28 @@
-/* Main Page Styles based on Figma design */
-
 body {
   color: #e5e5e5;
   font-family: "Inter", sans-serif;
   margin: 0;
   padding: 0;
   user-select: none;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: none;
+  border-radius: 25px; 
+}
+
+::-webkit-scrollbar-thumb {
+  background: #A2A59D;
+  border-radius: 25px;
+}
+
+
+::-webkit-scrollbar-thumb:hover {
+  background: #797a76
 }
 
 .wrapper {
