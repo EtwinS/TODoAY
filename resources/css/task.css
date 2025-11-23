@@ -22,8 +22,42 @@
 }
 
 
+.task-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* скрываем системный чекбокс */
 .task-status input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border: 2px solid #cfcfcf;
     border-radius: 50%;
+    cursor: pointer;
+    transition: 0.2s ease;
+    position: relative;
+    background: transparent;
+}
+.task-status input[type="checkbox"]:hover {
+    border-color: #ffffffaa;
+}
+
+.task-status input[type="checkbox"]:checked {
+    background: #fff;
+    border-color: #fff;
+}
+
+.task-status input[type="checkbox"]:checked::after {
+    content: "";
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
