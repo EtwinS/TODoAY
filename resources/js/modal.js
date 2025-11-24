@@ -44,8 +44,10 @@ export function openModalForEdit(taskId, title, description) {
   document.getElementById("taskTitle").value = title;
   document.getElementById("taskDescription").value = description;
   modal.showModal();
+  openButton.classList.add('active');
 }
 
 export function closeModal() {
   modal.close();
+  openButton.classList.remove('active');
 }
