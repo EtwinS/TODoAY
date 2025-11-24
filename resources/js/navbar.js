@@ -1,4 +1,5 @@
 import { loadTasks } from "./task.js";
+import { notesSidebar } from "./notesSidebar.js";
 
 // State management
 let currentDate = new Date();
@@ -80,6 +81,10 @@ function selectDay(date) {
   renderDays();
   updateDateTime();
   loadTasks(selectedDate);
+  notesSidebar.loadNotesForDay(
+    dayNames[selectedDate.getDay()],
+    selectedDate
+  );
 }
 
 // Navigate carousel left (past)
@@ -119,7 +124,14 @@ export function loadTasksForDay(date) {
 }
 
 // Initialize on DOM load
-window.addEventListener('DOMContentLoaded', initializeNavbar);
+window.addEventListener('DOMContentLoaded', () => {
+  initializeNavbar();
+  // Load notes for today on app start
+  notesSidebar.loadNotesForDay(
+    dayNames[selectedDate.getDay()],
+    selectedDate
+  );
+});
 
 // Export navigation functions
 export { navigatePast, navigateFuture };

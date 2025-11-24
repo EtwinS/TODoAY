@@ -1,0 +1,63 @@
+.notes-sidebar {
+    position: absolute;
+    left: 0;
+    top: 100px;
+    width: 260px;
+
+    display: flex;
+    flex-direction: column;
+
+    padding-left: 20px;
+
+    border-right: 1px solid #8c8c8c40;
+    color: #dcdcdc;
+
+    height: calc(100vh - 140px);
+    box-sizing: border-box;
+}
+
+.notes-header h3 {
+    font-weight: 300;
+    font-size: 20px;
+    margin: 0 0 15px 0;
+
+    color: #dcdcdc;
+}
+
+.notes-textarea {
+    width: 100%;
+    height: 100%;
+
+    background: none;
+    border: none;
+
+    padding: 5px 0 0 0;
+    resize: none;
+
+    color: #dad4d4;
+    font-family: "Inter", sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+
+    outline: none;
+
+    white-space: pre-wrap;
+    overflow-y: auto;
+}
+
+.notes-textarea::placeholder {
+    font-family: "Inter", sans-serif;
+}
+
+.notes-textarea::-webkit-scrollbar {
+    width: 4px;
+}
+
+.notes-textarea::-webkit-scrollbar-thumb {
+    background-color: #bfbfbf60;
+    border-radius: 2px;
+}
+
+.notes-textarea::-webkit-scrollbar-track {
+    background: transparent;
+}

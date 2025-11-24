@@ -70,7 +70,9 @@ export async function loadTasks(filterDate = null) {
 
     try {
         const result = await localDB.allDocs({ include_docs: true });
-        let tasks = result.rows.map(row => row.doc).filter(doc => !doc.deleted);
+        let tasks = result.rows
+            .map(row => row.doc)
+            .filter(doc => !doc.deleted && doc.type !== "note");
 
         // Filter by date if provided
         if (filterDate) {

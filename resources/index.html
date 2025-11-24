@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/header.css" />
   <link rel="stylesheet" href="css/modal.css" />
   <link rel="stylesheet" href="css/task.css" />
+  <link rel="stylesheet" href="css/notesSidebar.css" />
 </head>
 <body>
   <div id="app" class="wrapper">
@@ -23,6 +24,17 @@
       <div class="center-date" id="date"></div>
       <div class="center-time" id="time"></div>
     </header>
+
+    <aside id="notesSidebar" class="notes-sidebar">
+      <div class="notes-header">
+        <h3 id="notesDay">Notes/Blockers</h3>
+      </div>
+      <textarea 
+        id="notesTextarea" 
+        class="notes-textarea"
+        placeholder="Write your notes for this day..."
+      ></textarea>
+    </aside>
 
     <main class="task-list">
       <div id="taskContainer" class="task-container"></div>
@@ -102,5 +114,6 @@
   <script type="module" src="/js/modal.js"></script>
   <script type="module" src="/js/options.js"></script>
   <script type="module" src="/js/task.js"></script>
+  <script type="module" src="/js/notesSidebar.js"></script>
 </body>
 </html>
