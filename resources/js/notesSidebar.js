@@ -3,20 +3,31 @@ import { localDB } from "./pouchDB.js";
 class NotesSidebar {
     constructor() {
         this.notesTextarea = document.getElementById('notesTextarea');
-        this.notesDayHeader = document.getElementById('notesDay');
         this.currentDate = null;
         this.currentNoteId = null;
+        this.saveDebounceTimer = null;
+        this.debounceDelay = 500;
 
         this.initializeEventListeners();
     }
 
     initializeEventListeners() {
         this.notesTextarea.addEventListener('input', (e) => {
-            this.saveNotes(e.target.value);
+            this.debouncedSave(e.target.value);
         });
     }
 
-  // Generate stable ID: note_YYYY-MM-DD
+    debouncedSave(content) {
+        if (this.saveDebounceTimer) {
+            clearTimeout(this.saveDebounceTimer);
+        }
+
+        this.saveDebounceTimer = setTimeout(() => {
+            this.saveNotes(content);
+        }, this.debounceDelay);
+    }
+
+    // Generate stable ID: note_YYYY-MM-DD
     getNoteId(date) {
         const dateKey = date.toISOString().split("T")[0];
         return `note_${dateKey}`;
@@ -25,20 +36,19 @@ class NotesSidebar {
     async loadNotesForDay(day, date) {
         this.currentDate = date;
         this.currentNoteId = this.getNoteId(date);
-        this.notesDayHeader.textContent = day;
 
         try {
-        const doc = await localDB.get(this.currentNoteId);
-        this.notesTextarea.value = doc.content || "";
-        console.log("Loaded:", this.currentNoteId);
+            const doc = await localDB.get(this.currentNoteId);
+            this.notesTextarea.value = doc.content || "";
+            console.log("Loaded:", this.currentNoteId);
         } catch (err) {
-        if (err.status === 404) {
-            // No note for this day yet
-            this.notesTextarea.value = "";
-            console.log("No note found for this day.");
-        } else {
-            console.error("Error loading note:", err);
-        }
+            if (err.status === 404) {
+                // No note for this day yet
+                this.notesTextarea.value = "";
+                console.log("No note found for this day.");
+            } else {
+                console.error("Error loading note:", err);
+            }
         }
     }
 
@@ -56,19 +66,18 @@ class NotesSidebar {
                 doc.updatedAt = new Date().toISOString();
             } catch (err) {
                 if (err.status === 404) {
-                doc = {
-                    _id: noteId,
-                    type: "note",
-                    noteDate: noteId.replace("note_", ""),
-                    content: content,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                };
+                    doc = {
+                        _id: noteId,
+                        type: "note",
+                        noteDate: noteId.replace("note_", ""),
+                        content: content,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
                 } else {
-                throw err;
+                    throw err;
                 }
-        }
-
+            }
             await localDB.put(doc);
             console.log("Saved:", noteId);
         } catch (err) {
@@ -78,6 +87,15 @@ class NotesSidebar {
 
     getNotes() {
         return this.notesTextarea.value;
+    }
+
+    // Метод для немедленного сохранения (например, при закрытии приложения)
+    async forceSave() {
+        if (this.saveDebounceTimer) {
+            clearTimeout(this.saveDebounceTimer);
+            this.saveDebounceTimer = null;
+        }
+        await this.saveNotes(this.notesTextarea.value);
     }
 }
 
