@@ -8,10 +8,18 @@ const createButton = document.getElementById('closeModal');
 let currentEditingTaskId = null;
 
 openButton.addEventListener('click', () => {
-  currentEditingTaskId = null;
-  document.getElementById("taskTitle").value = "";
-  document.getElementById("taskDescription").value = "";
-  modal.showModal();
+  if (modal.open) {
+    // Close modal if it's already open
+    modal.close();
+    openButton.classList.remove('active');
+  } else {
+    // Open modal if it's closed
+    currentEditingTaskId = null;
+    document.getElementById("taskTitle").value = "";
+    document.getElementById("taskDescription").value = "";
+    modal.showModal();
+    openButton.classList.add('active');
+  }
 });
 
 createButton.addEventListener('click', async () => {
@@ -26,6 +34,7 @@ createButton.addEventListener('click', async () => {
 modal.addEventListener('click', (e) => {
   if (e.target === modal) {
     modal.close();
+    openButton.classList.remove('active');
   }
 });
 
