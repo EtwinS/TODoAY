@@ -16,6 +16,27 @@ dialog {
     min-width: 800px;
 }
 
+#optionsModal .modal-wrapper {
+    display: flex;
+    flex-direction: column;
+
+    /* Чтобы центрировать поля */
+    justify-content: space-between;
+    align-items: center;
+
+    min-height: 620px;
+    min-width: 800px;
+}
+
+.options-fields {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
 .input {
     width: 100%;
     background: none;
@@ -26,6 +47,11 @@ dialog {
     color: white;
     margin-bottom: 20px;
     box-sizing: border-box;
+}
+
+#optionsModal .input {
+    width: 333px;
+    text-align: center;
 }
 
 .textarea {

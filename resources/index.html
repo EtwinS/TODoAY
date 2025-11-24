@@ -51,6 +51,37 @@
           </div>
         </div>
       </dialog>
+
+      <dialog id="optionsModal">
+        <div class="modal-wrapper">
+          <div class="options-fields">
+            <input 
+              id="optionsUsername" 
+              type="text" 
+              class="input"
+              placeholder="Username"
+            >
+
+            <input 
+              id="optionsPassword" 
+              type="password" 
+              class="input"
+              placeholder="Password"
+            >
+
+            <input 
+              id="optionsUrl" 
+              type="url" 
+              class="input"
+              placeholder="URL"
+            >
+          </div>
+
+          <div class="center">
+            <button id="saveOptions" class="create-task-button">Save</button>
+          </div>
+        </div>
+      </dialog>
     </main>
 
     <footer class="bottom-bar">
@@ -58,7 +89,7 @@
         <img src="/assets/icons/addTask.png"/>
       </button>
 
-      <button class="settings-button">
+      <button id="settingsButton" class="settings-button">
         <img src="/assets/icons/settings.png"/>
       </button>
     </footer>
@@ -69,6 +100,7 @@
   <script src="/js/main.js"></script>
   <script type="module" src="/js/navbar.js"></script>
   <script type="module" src="/js/modal.js"></script>
+  <script type="module" src="/js/options.js"></script>
   <script type="module" src="/js/task.js"></script>
 </body>
 </html>
