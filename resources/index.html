@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="css/modal.css" />
   <link rel="stylesheet" href="css/task.css" />
   <link rel="stylesheet" href="css/notesSidebar.css" />
+  <link rel="stylesheet" href="css/weeklyReview.css" />
 </head>
 <body>
   <div id="app" class="wrapper">
@@ -94,11 +95,73 @@
           </div>
         </div>
       </dialog>
+
+      <dialog id="weeklyReviewModal">
+        <div class="weekly-review-wrapper">
+          <div class="weekly-review-header">
+            <div class="weekly-review-title-section">
+              <p class="weekly-review-title">Weekly review</p>
+              <div class="weekly-review-line"></div>
+              <p class="weekly-review-range" id="weekRangeText">01 - 07</p>
+            </div>
+          </div>
+
+          <div class="weekly-stats-container">
+            <table class="weekly-stats-table">
+              <thead>
+                <tr>
+                  <th class="weekly-stats-label-header"></th>
+                  <th>Monday</th>
+                  <th>Tuesday</th>
+                  <th>Wednesday</th>
+                  <th>Thursday</th>
+                  <th>Friday</th>
+                  <th>Saturday</th>
+                  <th>Sunday</th>
+                </tr>
+              </thead>
+              <tbody class="weekly-stats-body">
+              </tbody>
+            </table>
+          </div>
+
+          <div class="weekly-review-section">
+            <div class="weekly-notes-container">
+              <div class="weekly-notes-header">
+                <button id="prevDayBtn" class="weekly-nav-btn">◀</button>
+                <h4 id="weekDayName" class="weekly-day-name">Monday</h4>
+                <button id="nextDayBtn" class="weekly-nav-btn">▶</button>
+                <div class="weekly-line-wrapper">
+                  <div class="weekly-line-solid"></div>
+                  <div class="weekly-line-dashed"></div>
+                </div>
+              </div>
+              <div id="weeklyNotes" class="weekly-notes-content">No notes for this day</div>
+            </div>
+          </div>
+
+          <div class="weekly-review-section">
+            <div id="lastWeekSummary" class="weekly-summary-display">No summary for last week</div>
+          </div>
+
+          <div class="weekly-review-section">
+            <textarea 
+              id="weekSummaryTextarea" 
+              class="weekly-summary-textarea"
+              placeholder="Write your summary for this week..."
+            ></textarea>
+          </div>
+        </div>
+      </dialog>
     </main>
 
     <footer class="bottom-bar">
       <button id="openModal" class="add-task-button">
         <img src="/assets/icons/addTask.png"/>
+      </button>
+
+      <button id="openWeeklyReview" class="openWeeklyReview">
+        Weekly Review
       </button>
 
       <button id="settingsButton" class="settings-button">
@@ -115,5 +178,6 @@
   <script type="module" src="/js/options.js"></script>
   <script type="module" src="/js/task.js"></script>
   <script type="module" src="/js/notesSidebar.js"></script>
+  <script type="module" src="/js/weeklyReview.js"></script>
 </body>
 </html>

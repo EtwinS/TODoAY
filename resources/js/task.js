@@ -72,9 +72,15 @@ export async function loadTasks(filterDate = null) {
         const result = await localDB.allDocs({ include_docs: true });
         let tasks = result.rows
             .map(row => row.doc)
-            .filter(doc => !doc.deleted && doc.type !== "note");
+            .filter(doc => {
+                if (doc.deleted) return false;
+                if (doc.type === "note") return false;
+                if (doc.type === "weeklySummary") return false;
 
-        // Filter by date if provided
+                return doc._id.startsWith("task_");
+            });
+
+
         if (filterDate) {
             const filterDateKey = filterDate instanceof Date 
                 ? filterDate.toISOString().split('T')[0]

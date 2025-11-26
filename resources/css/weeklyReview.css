@@ -1,0 +1,251 @@
+/* ===== COMMON ===== */
+#weeklyReviewModal {
+  border: none;
+  padding: 0;
+
+}
+
+.weekly-review-wrapper {
+  width: 1144px;
+  height: 622px;
+    background-color: #3E3F3C;
+
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); 
+  grid-template-rows: auto auto auto;
+  grid-auto-flow: row;
+}
+
+/* ===== HEADER ===== */
+.weekly-review-header {
+  grid-column: span 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  margin-top: 48px;
+}
+
+.weekly-review-title-section {
+  text-align: center;
+  width: 100%;
+}
+
+.weekly-review-title {
+    margin: 0 0 7.5px 0;
+    font-size: 18px;
+    font-weight: 100;
+}
+
+.weekly-review-line {
+  width: 250px;
+  height: 1px;
+  background: #fff;
+  margin: 0 auto 0.5px auto;
+}
+
+.weekly-review-range {
+  font-size: 10px;
+  margin: 0;
+}
+
+/* ===== TABLE ===== */
+.weekly-stats-container {
+  justify-self: center;
+  grid-column: span 3;
+  width: 636px;
+  height: 170px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 10px;
+  padding: 0px;
+}
+
+.weekly-stats-table {
+  width: 100%;
+  height: 100%;
+  border-collapse: collapse;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.weekly-stats-table th {
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 100;
+  color: rgba(255,255,255,0.85);
+  border-right: 1px solid rgba(255,255,255,0.2);
+}
+
+.weekly-stats-table th:last-child {
+  border-right: none;
+}
+
+.weekly-stats-label-header {
+  text-align: left;
+  border-right: 1px solid rgba(255,255,255,0.2);
+}
+
+.weekly-stats-table tbody tr {
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.weekly-stats-label {
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 14px;
+  color: rgba(255,255,255,0.75);
+  border-right: 1px solid rgba(255,255,255,0.2);
+  font-weight: 500;
+  min-width: 80px;
+}
+
+.weekly-stats-cell {
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 14px;
+  color: rgba(255,255,255,0.85);
+  border-right: 1px solid rgba(255,255,255,0.2);
+}
+
+.weekly-stats-cell:last-child {
+  border-right: none;
+}
+
+.weekly-review-section {
+  grid-column: span 1;
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  justify-self: center;
+
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 10px;
+
+  width: 301px;
+  height: 230px;
+}
+
+/* ===== DAILY NOTES ===== */
+
+.weekly-notes-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.weekly-notes-header {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); 
+  grid-template-rows: auto auto;
+  grid-auto-flow: row;
+  
+  height: 40px;
+  width: 301px;
+}
+
+.weekly-nav-btn {
+  grid-column: span 1;
+  align-self: center;
+  justify-self: center;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+  width: 40px;
+  transition: 0.2s ease;
+}
+
+.weekly-nav-btn:hover {
+  color: white;
+}
+
+.weekly-day-name {
+  grid-column: span 1;
+  align-self: center;
+  justify-self: center;
+  font-size: 16px;
+  text-align: center;
+  margin: 0;
+}
+
+.weekly-line-wrapper {
+  grid-column: span 3;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  width: 100%;
+}
+
+.weekly-line-solid {
+  height: 1px;
+  width: 53%;
+  border-bottom: 1px solid #cfcfcf;
+}
+
+.weekly-line-dashed {
+  height: 1px;
+  width: 47%;
+  border-bottom: 1px dashed #cfcfcf;
+}
+
+.weekly-notes-content {
+  height: 185px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: justify;
+  overflow-y: auto;
+}
+
+/* ===== LAST WEEK SUMMARY ===== */
+.weekly-summary-display {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: justify;
+  overflow-y: auto;
+}
+
+/* ===== THIS WEEK SUMMARY ===== */
+.weekly-summary-textarea {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    padding: 5px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    background: none;
+    border: none;
+
+    resize: none;
+
+    color: #dad4d4;
+    font-family: "Inter", sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+
+    outline: none;
+
+    white-space: pre-wrap;
+    overflow-y: auto;
+}
+
+.weekly-summary-textarea::placeholder {
+  line-height:50%;
+  text-align: center;
+  color: rgba(255,255,255,0.35);
+  font-family: "Inter", sans-serif;
+}
