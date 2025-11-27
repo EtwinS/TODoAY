@@ -39,6 +39,23 @@ export async function createTask() {
     }
 }
 
+export async function deleteTask(taskId) {
+    try {
+        const task = await localDB.get(taskId);
+        task.deleted = true;
+        task.updatedAt = new Date().toISOString();
+
+        await localDB.put(task);
+        console.log("Task deleted:", task);
+
+        closeModal();
+        loadTasks(new Date(task.createdAt));
+
+    } catch (err) {
+        console.error("Error deleting task:", err);
+    }
+}
+
 export async function editTask(taskId) {
     const title = document.getElementById("taskTitle").value.trim();
     const description = document.getElementById("taskDescription").value.trim();
