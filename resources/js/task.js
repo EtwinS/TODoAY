@@ -1,6 +1,11 @@
 import { localDB } from "./pouchDB.js";
-import { openModalForEdit, closeModal } from "./modal.js";
+import { openModalForEdit, closeModal, extractSubtasks } from "./modal.js";
 import { getSelectedDate } from "./navbar.js";
+
+// Generate unique ID for subtask
+function generateSubtaskId() {
+    return "subtask_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
+}
 
 export async function createTask() {
     const title = document.getElementById("taskTitle").value.trim();
@@ -11,8 +16,8 @@ export async function createTask() {
         return;
     }
 
-    // Use selected date from navbar, not current date
     const taskDate = getSelectedDate();
+    const subtasks = extractSubtasks();
 
     const task = {
         _id: "task_" + new Date().getTime() + "_" + Math.random().toString(36).substring(2, 8),
@@ -21,7 +26,8 @@ export async function createTask() {
         createdAt: taskDate.toISOString(),
         updatedAt: new Date().toISOString(),
         completed: false,
-        deleted: false
+        deleted: false,
+        subtasks: subtasks
     };
 
     try {
@@ -65,10 +71,13 @@ export async function editTask(taskId) {
         return;
     }
 
+    const subtasks = extractSubtasks();
+
     try {
         const task = await localDB.get(taskId);
         task.title = title;
         task.description = description;
+        task.subtasks = subtasks;
         task.updatedAt = new Date().toISOString();
         await localDB.put(task);
         console.log("Task updated:", task);
@@ -79,6 +88,197 @@ export async function editTask(taskId) {
     } catch (err) {
         console.error("Error updating task:", err);
     }
+}
+
+// Calculate subtask completion percentage
+function getSubtaskProgress(subtasks) {
+    if (!subtasks || subtasks.length === 0) return 0;
+    const completed = subtasks.filter(st => st.completed).length;
+    return Math.round((completed / subtasks.length) * 100);
+}
+
+// Update progress bar visual
+function updateTaskProgress(taskItemElement, progress) {
+    const fill = taskItemElement.querySelector('.task-progress-fill');
+    if (!fill) return;
+    
+    fill.style.width = progress + "%";
+    
+    // Optional: change color based on progress
+    if (progress === 100) {
+        fill.style.backgroundColor = "#bbbbbbff"; // when complete
+    } else if (progress > 0) {
+        fill.style.backgroundColor = "#A2A59D"; //  for in-progress
+    } else {
+        fill.style.backgroundColor = ""; // for not started
+    }
+}
+
+function renderSimpleTask(task) {
+    const item = document.createElement("div");
+    item.className = "simple-task";
+
+    item.innerHTML = `
+        <div class="task-status">
+            <input type="checkbox" class="task-main-checkbox" ${task.completed ? "checked" : ""} />
+        </div>
+
+        <div class="task-text">
+            <p>${task.title}</p>
+        </div>
+    `;
+
+    // Checkbox handler
+    const checkbox = item.querySelector(".task-main-checkbox");
+    checkbox.addEventListener("change", async (e) => {
+        try {
+            const fresh = await localDB.get(task._id);
+            fresh.completed = e.target.checked;
+            fresh.updatedAt = new Date().toISOString();
+            await localDB.put(fresh);
+
+            loadTasks(new Date(task.createdAt));
+        } catch (err) {
+            console.error("Error updating simple task:", err);
+        }
+    });
+
+    // Click to edit
+    item.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'INPUT') {
+            openModalForEdit(task._id, task.title, task.description, []);
+        }
+    });
+
+    return item;
+}
+
+function renderTaskWithSubtasks(task) {
+    const item = document.createElement("div");
+    item.className = "task-with-subtasks";
+
+    const progress = getSubtaskProgress(task.subtasks);
+
+    item.innerHTML = `
+        <div class="task-text">
+            <p>${task.title}</p>
+        </div>
+        <div class="task-status">
+            <input type="checkbox" class="task-main-checkbox" ${task.completed ? "checked" : ""} />
+        </div>
+        <div class="task-progress">
+            <div class="task-progress-fill" style="width: ${progress}%"></div>
+        </div>
+        <div class="task-subtasks-toggle">
+            <span class="toggle-indicator">${task.subtasks[0]?.open === false
+                ? '<img src="/assets/icons/triangleFill.png" alt="Развернуть" class="toggle-icon">' 
+                : '<img src="/assets/icons/triangle.png" alt="Свернуть" class="toggle-icon">'}
+            </span>
+        </div>
+    `;
+
+    updateTaskProgress(item, progress);
+
+    const checkboxInput = item.querySelector(".task-main-checkbox");
+
+    // MAIN CHECKBOX (affects all subtasks)
+    checkboxInput.addEventListener("change", async (e) => {
+        try {
+            const fresh = await localDB.get(task._id);
+            fresh.completed = e.target.checked;
+
+            fresh.subtasks.forEach(st => st.completed = e.target.checked);
+
+            fresh.updatedAt = new Date().toISOString();
+            await localDB.put(fresh);
+
+            loadTasks(new Date(task.createdAt));
+        } catch (err) {
+            console.error("Error updating task:", err);
+        }
+    });
+
+    // CLICK TO EDIT
+    item.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'INPUT' && !e.target.closest('.task-subtasks-toggle')) {
+            openModalForEdit(task._id, task.title, task.description, task.subtasks);
+        }
+    });
+
+    // SUBTASK LIST
+    const subtasksContainer = document.createElement("div");
+    subtasksContainer.className = "task-subtasks-list";
+    subtasksContainer.style.display = task.subtasks[0]?.open === false ? "none" : "flex";
+
+    task.subtasks.forEach(subtask => {
+        const subtaskEl = document.createElement("div");
+        subtaskEl.className = "task-subtask-item";
+
+        subtaskEl.innerHTML = `
+            <input type="checkbox" class="subtask-checkbox" ${subtask.completed ? "checked" : ""} />
+            <span class="subtask-title">${subtask.title}</span>
+        `;
+
+        // Subtask checkbox handler
+        subtaskEl.querySelector(".subtask-checkbox").addEventListener("change", async (e) => {
+            try {
+                const fresh = await localDB.get(task._id);
+                const targetSubtask = fresh.subtasks.find(st => st.id === subtask.id);
+                if (targetSubtask) {
+                    targetSubtask.completed = e.target.checked;
+                }
+
+                const newProgress = getSubtaskProgress(fresh.subtasks);
+                const allDone = fresh.subtasks.every(st => st.completed);
+
+                fresh.completed = allDone;
+                fresh.updatedAt = new Date().toISOString();
+                await localDB.put(fresh);
+
+                updateTaskProgress(item, newProgress);
+                item.querySelector('.progress-text').textContent = newProgress + "%";
+                checkboxInput.checked = allDone;
+
+            } catch (err) {
+                console.error("Error updating subtask:", err);
+            }
+        });
+
+        subtasksContainer.appendChild(subtaskEl);
+    });
+
+    // Toggle open/close
+    const toggleBtn = item.querySelector(".task-subtasks-toggle");
+    toggleBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+
+        const openNow = subtasksContainer.style.display === "flex";
+        subtasksContainer.style.display = openNow ? "none" : "flex";
+        
+        const indicator = toggleBtn.querySelector(".toggle-indicator img");
+        if (indicator) {
+            if (openNow) {
+                indicator.src = "/assets/icons/triangleFill.png";
+                indicator.alt = "Развернуть";
+            } else {
+                indicator.src = "/assets/icons/triangle.png";
+                indicator.alt = "Свернуть";
+            }
+        }
+
+        try {
+            const fresh = await localDB.get(task._id);
+            fresh.subtasks.forEach(st => st.open = !openNow);
+            fresh.updatedAt = new Date().toISOString();
+            await localDB.put(fresh);
+        } catch (err) {
+            console.error("Error updating open state:", err);
+        }
+    });
+
+    item.appendChild(subtasksContainer);
+
+    return item;
 }
 
 export async function loadTasks(filterDate = null) {
@@ -96,7 +296,6 @@ export async function loadTasks(filterDate = null) {
 
                 return doc._id.startsWith("task_");
             });
-
 
         if (filterDate) {
             const filterDateKey = filterDate instanceof Date 
@@ -120,37 +319,9 @@ export async function loadTasks(filterDate = null) {
         }
 
         tasks.forEach(task => {
-            const item = document.createElement("div");
-            item.className = "task-item";
-
-            item.innerHTML = `
-                <div class="task-status">
-                    <input type="checkbox" ${task.completed ? "checked" : ""} />
-                </div>
-
-                <div class="task-text">
-                    <p>${task.title}</p>
-                </div> 
-            `;
-
-            // Click to edit
-            item.addEventListener('click', (e) => {
-                if (e.target.tagName !== 'INPUT') {
-                    openModalForEdit(task._id, task.title, task.description);
-                }
-            });
-
-            // Checkbox handler
-            item.querySelector("input").addEventListener("change", async (e) => {
-                try {
-                    const fresh = await localDB.get(task._id);
-                    fresh.completed = e.target.checked;
-                    fresh.updatedAt = new Date().toISOString();
-                    await localDB.put(fresh);
-                } catch (err) {
-                    console.error("Error updating task:", err);
-                }
-            });
+            const item = task.subtasks && task.subtasks.length > 0 
+                ? renderTaskWithSubtasks(task) 
+                : renderSimpleTask(task);
 
             container.appendChild(item);
         });

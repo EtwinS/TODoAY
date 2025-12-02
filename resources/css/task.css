@@ -1,39 +1,129 @@
 .task-container {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: flex-start;
 
     width: 807px;
     height: 622px;
-    gap: 7px;
-    margin-top: 20px;
-
-    overflow-y: auto;
 }
 
-.task-item {
+/*------------------------------- Simple task container -----------------------------------*/
+.simple-task {
+    box-sizing: border-box;
+    background: transparent;
+    width: 100%;
+
+    padding: 12px 14px;
+    margin-bottom: 12px;
+
     display: flex;
     flex-direction: row;
     align-items: center;
-    
+    justify-content: flex-start;
+    gap: 10px;
+    cursor: pointer;
+}
+
+/*------------------------------- Task with subtasks container-----------------------------------*/
+.task-with-subtasks {
+    box-sizing: border-box;
     width: 100%;
-    gap: 5px;
+    position: relative;
+    
+    border:1px solid #ffffff;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+
+    display: grid;
+    grid-template-columns: 30px auto 30px; 
+    grid-template-rows: auto auto auto;
+    grid-auto-flow:row;
+    cursor: pointer;
 }
 
 
+/*------------------------------- Progress bar -----------------------------------*/
+.task-progress {
+    grid-column: span 1;
+    align-self: center;
+    justify-self: center;
+    height: 10px;              
+    width: 100%;
+    border:1px solid #ffffff;
+ 
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.task-progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 15px;
+    background-color: linear-gradient(#3E3F3C 0%, #cfcfcf 100%);
+    transition: width 0.3s ease;
+}
+
+/*------------------------------- Subtasks toggle arrow -----------------------------------*/
+.task-subtasks-toggle {
+    grid-column: span 1;
+    display: flex;
+    align-items: center;
+    margin-left: 6px;
+    cursor: pointer;
+}
+
+.task-subtasks-toggle .toggle-indicator img{
+    height: auto;
+    width: 15px;
+}
+
+/*------------------------------- Subtasks wrapper -----------------------------------*/
+.task-subtasks-list {
+    grid-column: span 3;
+    margin-top: 10px;
+    padding: 10px 30px;
+    border-radius: 8px;
+    
+    flex-direction: column;
+    gap: 10px;
+}
+
+.task-subtask-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+/*------------------------------- Text -----------------------------------*/
+.task-text p {
+    margin: 0;
+    font-size: 18px;
+    font-weight:100;
+}
+
+.task-text {
+    grid-column: span 3;
+}
+
+
+/*------------------------------- Chekbox-----------------------------------*/
 .task-status {
+    grid-column: span 1;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* скрываем системный чекбокс */
-.task-status input[type="checkbox"] {
+input[type="checkbox"] {
+    grid-column: span 1;
     appearance: none;
     -webkit-appearance: none;
-    width: 22px;
-    height: 22px;
+    min-width: 15px;
+    height: 15px;
     border: 2px solid #cfcfcf;
     border-radius: 50%;
     cursor: pointer;
@@ -41,20 +131,20 @@
     position: relative;
     background: transparent;
 }
-.task-status input[type="checkbox"]:hover {
-    border-color: #ffffffaa;
+input[type="checkbox"]:hover {
+    border-color: #cfcfcf;
 }
 
-.task-status input[type="checkbox"]:checked {
-    background: #fff;
-    border-color: #fff;
+input[type="checkbox"]:checked {
+    background: #cfcfcf;
+    border-color: #cfcfcf;
 }
 
-.task-status input[type="checkbox"]:checked::after {
+input[type="checkbox"]:checked::after {
     content: "";
     width: 12px;
     height: 12px;
-    background: #fff;
+    background: #cfcfcf;
     border-radius: 50%;
     position: absolute;
     top: 50%;
