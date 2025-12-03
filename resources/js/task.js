@@ -156,30 +156,43 @@ function renderTaskWithSubtasks(task) {
         </div>
         <div class="task-subtasks-toggle">
             <span class="toggle-indicator">
-                <img src="${task.subtasks[0]?.open === false ? '/assets/icons/triangleFill.png' : '/assets/icons/triangle.png'}" alt="Toggle" class="toggle-icon">
+                <img src="${task.subtasks[0]?.open === false 
+                    ? '/assets/icons/triangleFill.png' 
+                    : '/assets/icons/triangle.png'}" 
+                alt="Toggle" 
+                class="toggle-icon">
             </span>
         </div>
+        <div class="task-subtasks-list"></div>
+        ${task.description ? `<p class="task-desc">${task.description}</p>` : ""}
     `;
 
     updateTaskProgress(item, progress);
 
     const checkboxInput = item.querySelector(".task-main-checkbox");
 
-    // Prevent clicks inside subtasks from opening modal (we'll handle below)
-    item.addEventListener('click', (e) => {
-        // If click on input or inside subtasks list or on toggle, ignore opening
-        if (e.target.tagName === 'INPUT' || e.target.closest('.task-subtasks-list') || e.target.closest('.task-subtasks-toggle')) {
+    item.addEventListener("click", (e) => {
+        if (
+            e.target.tagName === "INPUT" ||
+            e.target.closest(".task-subtasks-list") ||
+            e.target.closest(".task-subtasks-toggle")
+        ) {
             return;
         }
-        openModalForEdit(task._id, task.title, task.description, task.subtasks || []);
+
+        openModalForEdit(
+            task._id,
+            task.title,
+            task.description,
+            task.subtasks || []
+        );
     });
 
-    // MAIN CHECKBOX (affects all subtasks)
     checkboxInput.addEventListener("change", async (e) => {
         try {
             const fresh = await localDB.get(task._id);
             fresh.completed = e.target.checked;
-            fresh.subtasks.forEach(st => st.completed = e.target.checked);
+            fresh.subtasks.forEach((st) => (st.completed = e.target.checked));
             fresh.updatedAt = new Date().toISOString();
             await localDB.put(fresh);
 
@@ -189,12 +202,11 @@ function renderTaskWithSubtasks(task) {
         }
     });
 
-    // SUBTASK LIST
-    const subtasksContainer = document.createElement("div");
-    subtasksContainer.className = "task-subtasks-list";
-    subtasksContainer.style.display = task.subtasks[0]?.open === false ? "none" : "flex";
+    const subtasksContainer = item.querySelector(".task-subtasks-list");
+    subtasksContainer.style.display =
+        task.subtasks[0]?.open === false ? "none" : "flex";
 
-    task.subtasks.forEach(subtask => {
+    task.subtasks.forEach((subtask) => {
         const subtaskEl = document.createElement("div");
         subtaskEl.className = "task-subtask-item";
 
@@ -203,62 +215,61 @@ function renderTaskWithSubtasks(task) {
             <span class="subtask-title">${subtask.title}</span>
         `;
 
-        subtaskEl.querySelector(".subtask-checkbox").addEventListener("change", async (e) => {
-            try {
-                const fresh = await localDB.get(task._id);
-                const targetSubtask = fresh.subtasks.find(st => st.id === subtask.id);
-                if (targetSubtask) {
-                    targetSubtask.completed = e.target.checked;
+        subtaskEl
+            .querySelector(".subtask-checkbox")
+            .addEventListener("change", async (e) => {
+                try {
+                    const fresh = await localDB.get(task._id);
+                    const targetSubtask = fresh.subtasks.find(
+                        (st) => st.id === subtask.id
+                    );
+                    if (targetSubtask) {
+                        targetSubtask.completed = e.target.checked;
+                    }
+
+                    const newProgress = getSubtaskProgress(fresh.subtasks);
+                    const allDone = fresh.subtasks.every(
+                        (st) => st.completed
+                    );
+
+                    fresh.completed = allDone;
+                    fresh.updatedAt = new Date().toISOString();
+                    await localDB.put(fresh);
+
+                    updateTaskProgress(item, newProgress);
+                    checkboxInput.checked = allDone;
+                } catch (err) {
+                    console.error("Error updating subtask:", err);
                 }
-
-                const newProgress = getSubtaskProgress(fresh.subtasks);
-                const allDone = fresh.subtasks.every(st => st.completed);
-
-                fresh.completed = allDone;
-                fresh.updatedAt = new Date().toISOString();
-                await localDB.put(fresh);
-
-                updateTaskProgress(item, newProgress);
-                checkboxInput.checked = allDone;
-
-            } catch (err) {
-                console.error("Error updating subtask:", err);
-            }
-        });
+            });
 
         subtasksContainer.appendChild(subtaskEl);
     });
 
-    // Toggle open/close
     const toggleBtn = item.querySelector(".task-subtasks-toggle");
     toggleBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
 
         const openNow = subtasksContainer.style.display === "flex";
         subtasksContainer.style.display = openNow ? "none" : "flex";
-        
+
         const indicator = toggleBtn.querySelector(".toggle-indicator img");
         if (indicator) {
-            if (openNow) {
-                indicator.src = "/assets/icons/triangleFill.png";
-                indicator.alt = "Развернуть";
-            } else {
-                indicator.src = "/assets/icons/triangle.png";
-                indicator.alt = "Свернуть";
-            }
+            indicator.src = openNow
+                ? "/assets/icons/triangleFill.png"
+                : "/assets/icons/triangle.png";
+            indicator.alt = openNow ? "Развернуть" : "Свернуть";
         }
 
         try {
             const fresh = await localDB.get(task._id);
-            fresh.subtasks.forEach(st => st.open = !openNow);
+            fresh.subtasks.forEach((st) => (st.open = !openNow));
             fresh.updatedAt = new Date().toISOString();
             await localDB.put(fresh);
         } catch (err) {
             console.error("Error updating open state:", err);
         }
     });
-
-    item.appendChild(subtasksContainer);
 
     return item;
 }

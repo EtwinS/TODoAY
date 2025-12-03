@@ -37,7 +37,7 @@
     margin-bottom: 12px;
 
     display: grid;
-    grid-template-columns: 30px auto 30px; 
+    grid-template-columns: 30px 1fr 1fr 30px; 
     grid-template-rows: auto auto auto;
     grid-auto-flow:row;
 }
@@ -45,7 +45,7 @@
 
 /*------------------------------- Progress bar -----------------------------------*/
 .task-progress {
-    grid-column: span 1;
+    grid-column: span 2;
     align-self: center;
     justify-self: center;
     height: 10px;              
@@ -81,7 +81,7 @@
 
 /*------------------------------- Subtasks wrapper -----------------------------------*/
 .task-subtasks-list {
-    grid-column: span 3;
+    grid-column: span 2;
     margin-top: 10px;
     padding: 10px 30px;
     border-radius: 8px;
@@ -98,6 +98,22 @@
     gap: 10px;
 }
 
+/*------------------------------- Description container -----------------------------------*/
+.task-desc {
+    grid-column: span 2;
+    border: 1px dashed #FFFFFF;
+    border-radius: 11px;
+    padding: 5px;
+    margin-right: 30px;
+    cursor: pointer;
+    box-sizing: border-box;
+
+    word-break: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
+    white-space: normal;
+}
+
 /*------------------------------- Text -----------------------------------*/
 .task-text p {
     margin: 0;
@@ -106,10 +122,16 @@
 }
 
 .task-text {
-    grid-column: span 3;
+    grid-column: span 4;
     cursor: pointer;
 }
 
+.subtask-title {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
+    white-space: normal;
+}
 
 /*------------------------------- Chekbox-----------------------------------*/
 .task-status {
