@@ -1,4 +1,5 @@
 import { localDB } from "./pouchDB.js";
+import { getSelectedDate } from "./navbar.js";
 
 const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -18,8 +19,18 @@ class WeeklyReview {
 
   initializeEventListeners() {
     document.addEventListener('click', (e) => {
-      if (e.target.closest('#openWeeklyReview')) {
-        this.openModal();
+      const button = e.target.closest('#openWeeklyReview');
+      if (button) {
+        // Получаем дату из атрибута data-date у родительского элемента day-wrapper
+        const dayWrapper = button.closest('.day-wrapper');
+        const dayElement = dayWrapper?.querySelector('.day');
+        const dateStr = dayElement?.dataset.date;
+        
+        if (dateStr) {
+          this.openModal(new Date(dateStr));
+        } else {
+          this.openModal();
+        }
       }
     });
 
@@ -183,8 +194,11 @@ class WeeklyReview {
     tbody.appendChild(percentageRow);
   }
 
-  async openModal() {
-    this.currentWeekStart = this.getWeekStart(new Date());
+  async openModal(clickedDate = null) {
+    // Если передана конкретная дата из клика на флаг, используем её
+    // Иначе берём выбранную дату из navbar
+    const dateToUse = clickedDate || getSelectedDate();
+    this.currentWeekStart = this.getWeekStart(dateToUse);
     this.currentDayIndex = 1; // Reset to Monday
     
     document.getElementById('weekRangeText').textContent = this.formatDateRange();
@@ -202,10 +216,8 @@ class WeeklyReview {
   }
 
   async previousDay() {
-    console.log('Current index BEFORE:', this.currentDayIndex);
     if (this.currentDayIndex > 1) {
       this.currentDayIndex--;
-      console.log('Current index AFTER:', this.currentDayIndex);
       await this.displayDayNotes();
     }
   }
