@@ -17,8 +17,11 @@ class WeeklyReview {
   }
 
   initializeEventListeners() {
-    this.openButton.addEventListener('click', () => this.openModal());
-    this.closeButton.addEventListener('click', () => this.closeModal());
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#openWeeklyReview')) {
+        this.openModal();
+      }
+    });
 
     // Close on background click
     this.modal.addEventListener('click', (e) => {

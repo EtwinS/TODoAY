@@ -1,5 +1,5 @@
 header {
-  padding-top: 24px;
+  padding-top: 50px;
   padding-bottom: 10px;
   text-align: center;
 
@@ -50,7 +50,7 @@ header {
 
 
 .line-wrapper {
-  margin-top: 20px;
+  margin-top: 5px;
   display: flex;
   justify-content: center;
   width: 100%;
@@ -66,4 +66,18 @@ header {
   height: 1px;
   width: 47%;
   border-bottom: 1px dashed #cfcfcf;
+}
+.day-wrapper {
+  position: relative;
+}
+
+.day-wrapper .openWeeklyReview {
+  position: absolute;
+  bottom:-5px;
+  right: 20%;
+}
+
+.openWeeklyReview img{
+  width: 44px;
+  height: auto;
 }

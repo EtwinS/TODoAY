@@ -57,12 +57,17 @@ footer {
   bottom: 10px;
 }
 
+.openWeeklyReview img {
+  width: 44px;
+}
+
 
 button {
   padding: 0px;
   background: none;
   border: none;
   cursor: pointer;
+  outline: none;
 }
 
 button:active {

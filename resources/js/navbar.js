@@ -1,20 +1,42 @@
 import { loadTasks } from "./task.js";
 import { notesSidebar } from "./notesSidebar.js";
+import { localDB } from "./pouchDB.js";
 
 // State management
 let currentDate = new Date();
 let selectedDate = new Date();
 let daysArray = [];
+let weeklyReviewDay = 0; // Default to Sunday
 
 // Day names
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 // Initialize navbar on load
-function initializeNavbar() {
+async function initializeNavbar() {
+  await loadWeeklyReviewDay(); // Wait for loading
   generateDaysArray();
   renderDays();
   updateDateTime();
   setInterval(updateDateTime, 1000);
+}
+
+// Load weekly review day from storage
+async function loadWeeklyReviewDay() {
+  try {
+    const doc = await localDB.get('settings'); // Use same DB as options.js
+    if (doc.weeklyReviewDay !== undefined) {
+      weeklyReviewDay = doc.weeklyReviewDay;
+    }
+  } catch (e) {
+    // Settings not found, weeklyReviewDay remains 0 (Sunday)
+    console.log('Settings not found, using default weekly review day (Sunday)');
+  }
+}
+
+// Set weekly review day (called from options.js)
+export function setWeeklyReviewDay(day) {
+  weeklyReviewDay = day;
+  renderDays(); // Re-render immediately
 }
 
 // Generate array of 7 days centered on selected date
@@ -47,6 +69,9 @@ function renderDays() {
   container.innerHTML = "";
   
   daysArray.forEach((date, index) => {
+    const dayWrapper = document.createElement("div");
+    dayWrapper.className = "day-wrapper";
+    
     const dayElement = document.createElement("span");
     dayElement.className = "day";
     dayElement.dataset.date = formatDateKey(date);
@@ -70,7 +95,18 @@ function renderDays() {
     }
     
     dayElement.addEventListener("click", () => selectDay(date));
-    container.appendChild(dayElement);
+    dayWrapper.appendChild(dayElement);
+    
+    // Add weekly review button if this day matches the weekly review day
+    if (weeklyReviewDay !== null && date.getDay() === weeklyReviewDay) {
+      const reviewButton = document.createElement("button");
+      reviewButton.id = "openWeeklyReview";
+      reviewButton.className = "openWeeklyReview";
+      reviewButton.innerHTML = '<img src="/assets/icons/flag.png"/>';
+      dayWrapper.appendChild(reviewButton);
+    }
+    
+    container.appendChild(dayWrapper);
   });
 }
 
@@ -124,8 +160,8 @@ export function loadTasksForDay(date) {
 }
 
 // Initialize on DOM load
-window.addEventListener('DOMContentLoaded', () => {
-  initializeNavbar();
+window.addEventListener('DOMContentLoaded', async () => {
+  await initializeNavbar(); // Wait for async initialization
   // Load notes for today on app start
   notesSidebar.loadNotesForDay(
     dayNames[selectedDate.getDay()],

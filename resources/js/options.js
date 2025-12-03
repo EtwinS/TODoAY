@@ -1,6 +1,10 @@
+import { localDB } from "./pouchDB.js";
+import { setWeeklyReviewDay } from "./navbar.js";
+
 const optionsModal = document.getElementById('optionsModal');
 const settingsButton = document.getElementById('settingsButton');
 const saveButton = document.getElementById('saveOptions');
+
 
 // Store current state of options modal
 let isOptionsOpen = false;
@@ -20,32 +24,43 @@ optionsModal.addEventListener('click', (e) => {
 });
 
 // Save button functionality
-saveButton.addEventListener('click', () => {
-  // Collect form values
+saveButton.addEventListener('click', async () => {
   const username = document.getElementById('optionsUsername').value;
   const password = document.getElementById('optionsPassword').value;
   const url = document.getElementById('optionsUrl').value;
+  const weeklyReviewDate = document.getElementById('dayWeeklyReview').value;
 
-  // Create options object
+  const weeklyReviewDayIndex = weeklyReviewDate
+    ? new Date(weeklyReviewDate).getDay()
+    : 0; // Default to Sunday
+
   const optionsData = {
+    _id: 'settings', // Required by PouchDB
     username: username,
     password: password,
     url: url,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    weeklyReviewDay: weeklyReviewDayIndex
   };
 
-  // Output to console for now
-  console.log('Options saved:', optionsData);
+  try {
+    // Try to get existing document to preserve _rev
+    let existingDoc;
+    try {
+      existingDoc = await localDB.get('settings');
+      optionsData._rev = existingDoc._rev;
+    } catch (e) {
+      // Document doesn't exist yet, that's fine
+    }
+    
+    await localDB.put(optionsData);
+    
+    // Update navbar with new weekly review day
+    setWeeklyReviewDay(weeklyReviewDayIndex);
+  } catch (error) {
+    console.error('Error saving options to database:', error);
+  }
 
-  // TODO: Implement actual saving logic here
-  // This is where you would:
-  // 1. Send the data to a backend server
-  // 2. Save to local storage
-  // 3. Save to a database
-  // 4. Validate the data before saving
-  // 5. Handle errors and display success/error messages
-
-  // Close the modal after saving
   optionsModal.close();
   isOptionsOpen = false;
 
@@ -53,4 +68,5 @@ saveButton.addEventListener('click', () => {
   document.getElementById('optionsUsername').value = '';
   document.getElementById('optionsPassword').value = '';
   document.getElementById('optionsUrl').value = '';
+  document.getElementById('dayWeeklyReview').value = '';
 });
