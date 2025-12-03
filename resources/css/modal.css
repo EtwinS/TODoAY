@@ -84,14 +84,7 @@ dialog {
     justify-content: space-between;
 }
 
-.create-task-button {
-    padding: 8px 20px;
-    border: 1px solid #d0d0d0;
-    background: none;
-    cursor: pointer;
-    border-radius: 6px;
-    color: white;
-}
+
 
 .delete-task-button {
     border: none;
@@ -142,6 +135,7 @@ dialog {
 
 .subtask-delete-btn {
     color:#fff;
+    cursor: pointer;
 }
 
 .center {
@@ -150,4 +144,13 @@ dialog {
     display: flex;
     flex-direction: column;
     align-items: center;
+}
+
+.create-task-button {
+    padding: 8px 20px;
+    border: 1px solid #d0d0d0;
+    background: none;
+    
+    border-radius: 6px;
+    color: white;
 }

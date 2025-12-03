@@ -1,13 +1,10 @@
-import { createTask, editTask, loadTasks, deleteTask } from "./task.js";
-
 const modal = document.getElementById('modal');
 const openButton = document.getElementById('openModal');
-const createButton = document.getElementById('closeModal');
+const createButton = document.getElementById('createTaskBtn') || document.getElementById('closeModal');
 const deleteButton = document.getElementById('deleteTaskBtn');
 const addSubtaskBtn = document.getElementById('addSubtaskBtn');
 const subtasksWrapper = document.querySelector('.subtasks-wrapper');
 
-// Store current editing task ID
 let currentEditingTaskId = null;
 
 // Generate unique ID for subtask
@@ -25,13 +22,13 @@ export function extractSubtasks() {
         const checkbox = el.querySelector('.subtask-edit-checkbox');
         const idSpan = el.querySelector('[data-subtask-id]');
         
-        const title = input ? input.value.trim() : el.querySelector('.subtask-display-title')?.textContent || '';
+        const title = input ? input.value.trim() : el.querySelector('.subtask-display-title')?.textContent.trim() || '';
         
         if (title) {
             subtasks.push({
                 id: idSpan?.dataset.subtaskId || generateSubtaskId(),
                 title: title,
-                completed: checkbox ? checkbox.checked : false,
+                completed: !!(checkbox && checkbox.checked),
                 open: true
             });
         }
@@ -56,16 +53,15 @@ function createSubtaskElement(subtask = null) {
                 type="text" 
                 class="subtask-input" 
                 placeholder="Add subtask..."
-                value="${subtask?.title || ''}"
+                value="${subtask?.title ? escapeHtml(subtask.title) : ''}"
             />
-            <button class="subtask-delete-btn">✕</button>
+            <button type="button" class="subtask-delete-btn" aria-label="Delete subtask">✕</button>
         </div>
     `;
 
     const input = container.querySelector('.subtask-input');
     const deleteBtn = container.querySelector('.subtask-delete-btn');
 
-    // On blur - convert to display mode
     input.addEventListener('blur', () => {
         if (input.value.trim()) {
             convertToDisplay(container, input.value.trim(), subtask?.completed || false);
@@ -74,20 +70,18 @@ function createSubtaskElement(subtask = null) {
         }
     });
 
-    // On enter - blur to trigger conversion
     input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             input.blur();
         }
     });
 
-    // Delete button
     deleteBtn.addEventListener('click', () => {
         container.remove();
     });
 
-    // Focus on input
-    input.focus();
+    // autofocus only if element is attached (defensive)
+    setTimeout(() => { try { input.focus(); } catch (e) {} }, 0);
 
     return container;
 }
@@ -95,7 +89,7 @@ function createSubtaskElement(subtask = null) {
 // Convert subtask to display mode
 function convertToDisplay(container, title, completed) {
     const idSpan = container.querySelector('[data-subtask-id]');
-    const subtaskId = idSpan.dataset.subtaskId;
+    const subtaskId = idSpan ? idSpan.dataset.subtaskId : generateSubtaskId();
     
     container.innerHTML = `
         <div data-subtask-id="${subtaskId}">
@@ -104,8 +98,8 @@ function convertToDisplay(container, title, completed) {
                 class="subtask-edit-checkbox" 
                 ${completed ? 'checked' : ''}
             />
-            <span class="subtask-display-title">${title}</span>
-            <button class="subtask-delete-btn">✕</button>
+            <span class="subtask-display-title">${escapeHtml(title)}</span>
+            <button type="button" class="subtask-delete-btn" aria-label="Delete subtask">✕</button>
         </div>
     `;
 
@@ -113,26 +107,23 @@ function convertToDisplay(container, title, completed) {
     const deleteBtn = container.querySelector('.subtask-delete-btn');
     const checkbox = container.querySelector('.subtask-edit-checkbox');
 
-    // Click on title to edit
     displayTitle.addEventListener('click', () => {
-        convertToInput(container, title, completed);
+        convertToInput(container, title, checkbox.checked);
     });
 
-    // Delete button
     deleteBtn.addEventListener('click', () => {
         container.remove();
     });
 
-    // Checkbox toggle
     checkbox.addEventListener('change', () => {
-        // Checkbox state is already changed
+        // state updated in DOM; when modal saves we will read checkboxes via extractSubtasks()
     });
 }
 
 // Convert subtask to input mode
 function convertToInput(container, title, completed) {
     const idSpan = container.querySelector('[data-subtask-id]');
-    const subtaskId = idSpan.dataset.subtaskId;
+    const subtaskId = idSpan ? idSpan.dataset.subtaskId : generateSubtaskId();
     
     container.innerHTML = `
         <div data-subtask-id="${subtaskId}">
@@ -144,9 +135,9 @@ function convertToInput(container, title, completed) {
             <input 
                 type="text" 
                 class="subtask-input" 
-                value="${title}"
+                value="${escapeHtml(title)}"
             />
-            <button class="subtask-delete-btn">✕</button>
+            <button type="button" class="subtask-delete-btn" aria-label="Delete subtask">✕</button>
         </div>
     `;
 
@@ -171,79 +162,150 @@ function convertToInput(container, title, completed) {
         container.remove();
     });
 
-    input.focus();
-    input.select();
+    setTimeout(() => { try { input.focus(); input.select(); } catch (e) {} }, 0);
+}
+
+// Simple HTML escape to avoid injecting markup in values
+function escapeHtml(str = '') {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 // Add subtask button handler
-addSubtaskBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    const subtaskEl = createSubtaskElement();
-    subtasksWrapper.appendChild(subtaskEl);
-});
+if (addSubtaskBtn) {
+    addSubtaskBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const subtaskEl = createSubtaskElement();
+        subtasksWrapper.appendChild(subtaskEl);
+    });
+}
 
-openButton.addEventListener('click', () => {
-    if (modal.open) {
-        // Close modal if it's already open
-        modal.close();
-        openButton.classList.remove('active');
-    } else {
-        // Open modal if it's closed
-        currentEditingTaskId = null;
-        deleteButton.style.display = "none";
-        document.getElementById("taskTitle").value = "";
-        document.getElementById("taskDescription").value = "";
-        subtasksWrapper.innerHTML = "";
-        modal.showModal();
-        openButton.classList.add('active');
-    }
-});
+// open button - create new task
+if (openButton) {
+    openButton.addEventListener('click', () => {
+        if (modal.open) {
+            modal.close();
+            openButton.classList.remove('active');
+            // reset state
+            currentEditingTaskId = null;
+            if (createButton) createButton.textContent = "Create";
+            if (deleteButton) deleteButton.style.display = "none";
+        } else {
+            currentEditingTaskId = null;
+            if (deleteButton) deleteButton.style.display = "none";
+            const titleEl = document.getElementById("taskTitle");
+            const descEl = document.getElementById("taskDescription");
+            if (titleEl) titleEl.value = "";
+            if (descEl) descEl.value = "";
+            if (subtasksWrapper) subtasksWrapper.innerHTML = "";
+            if (createButton) createButton.textContent = "Create";
+            modal.showModal();
+            openButton.classList.add('active');
+        }
+    });
+}
 
-createButton.addEventListener('click', async () => {
-    if (currentEditingTaskId) {
-        await editTask(currentEditingTaskId);
-    } else {
-        await createTask();
-    }
-});
+// When user clicks Save/Create in modal — dispatch event with data for task.js
+if (createButton) {
+    createButton.addEventListener('click', async () => {
+        const titleEl = document.getElementById("taskTitle");
+        const descEl = document.getElementById("taskDescription");
+        const title = titleEl ? titleEl.value.trim() : "";
+        const description = descEl ? descEl.value.trim() : "";
+        const subtasks = extractSubtasks();
+        const taskDate = window.getSelectedDate ? window.getSelectedDate() : new Date();
 
-deleteButton.addEventListener("click", async () => {
-    if (!currentEditingTaskId) {
-        alert("Cannot delete: task is not selected");
-        return;
-    }
+        if (!title) {
+            alert("Please enter task title");
+            return;
+        }
 
-    await deleteTask(currentEditingTaskId);
-});
+        if (currentEditingTaskId) {
+            // update
+            const detail = {
+                id: currentEditingTaskId,
+                title,
+                description,
+                subtasks,
+                taskDate: taskDate
+            };
+            document.dispatchEvent(new CustomEvent('task:update', { detail }));
+            // keep modal open until task.js closes it via closeModal()
+        } else {
+            // create
+            const detail = {
+                title,
+                description,
+                subtasks,
+                taskDate: taskDate
+            };
+            document.dispatchEvent(new CustomEvent('task:save', { detail }));
+            // keep modal open until task.js closes it
+        }
+    });
+}
+
+// Delete button dispatches delete event
+if (deleteButton) {
+    deleteButton.addEventListener("click", async () => {
+        if (!currentEditingTaskId) {
+            alert("Cannot delete: task is not selected");
+            return;
+        }
+
+        if (!confirm("Delete this task?")) return;
+
+        document.dispatchEvent(new CustomEvent('task:delete', { detail: { id: currentEditingTaskId } }));
+    });
+}
 
 // Close modal on background click
-modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-        modal.close();
-        openButton.classList.remove('active');
-    }
-});
+if (modal) {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.close();
+            openButton.classList.remove('active');
+            // reset UI state
+            currentEditingTaskId = null;
+            if (createButton) createButton.textContent = "Create";
+            if (deleteButton) deleteButton.style.display = "none";
+        }
+    });
+}
 
 // Export for task.js to use
 export function openModalForEdit(taskId, title, description, subtasks = []) {
     currentEditingTaskId = taskId;
-    deleteButton.style.display = "block";
-    document.getElementById("taskTitle").value = title;
-    document.getElementById("taskDescription").value = description;
+    if (deleteButton) deleteButton.style.display = "block";
+    const titleEl = document.getElementById("taskTitle");
+    const descEl = document.getElementById("taskDescription");
+    if (titleEl) titleEl.value = title || "";
+    if (descEl) descEl.value = description || "";
     
-    // Clear and populate subtasks
-    subtasksWrapper.innerHTML = "";
+    if (subtasksWrapper) subtasksWrapper.innerHTML = "";
     subtasks.forEach(subtask => {
         const el = createSubtaskElement(subtask);
-        convertToDisplay(el, subtask.title, subtask.completed);
+        // Show in display mode
+        convertToDisplay(el, subtask.title, !!subtask.completed);
         subtasksWrapper.appendChild(el);
     });
 
+    if (createButton) createButton.textContent = "Save";
     modal.showModal();
     openButton.classList.add('active');
 }
 
 export function closeModal() {
-    modal.close();
+    try {
+        modal.close();
+    } catch (e) {
+        // ignore if already closed
+    }
     openButton.classList.remove('active');
+    currentEditingTaskId = null;
+    if (createButton) createButton.textContent = "Create";
+    if (deleteButton) deleteButton.style.display = "none";
 }

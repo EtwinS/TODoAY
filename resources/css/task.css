@@ -40,7 +40,6 @@
     grid-template-columns: 30px auto 30px; 
     grid-template-rows: auto auto auto;
     grid-auto-flow:row;
-    cursor: pointer;
 }
 
 
@@ -55,6 +54,7 @@
  
     border-radius: 15px;
     overflow: hidden;
+    cursor: pointer;
 }
 
 .task-progress-fill {
@@ -107,6 +107,7 @@
 
 .task-text {
     grid-column: span 3;
+    cursor: pointer;
 }
 
 

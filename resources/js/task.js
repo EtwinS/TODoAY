@@ -1,23 +1,22 @@
 import { localDB } from "./pouchDB.js";
-import { openModalForEdit, closeModal, extractSubtasks } from "./modal.js";
-import { getSelectedDate } from "./navbar.js";
+import { openModalForEdit, closeModal } from "./modal.js"; // modal.js теперь только экспортирует UI функции, не вызывает DB funcs
 
 // Generate unique ID for subtask
 function generateSubtaskId() {
     return "subtask_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
 }
 
-export async function createTask() {
-    const title = document.getElementById("taskTitle").value.trim();
-    const description = document.getElementById("taskDescription").value.trim();
+// Save a new task given data (used by event listener)
+export async function saveNewTask(data) {
+    const title = data.title?.trim();
+    const description = data.description?.trim() || "";
+    const taskDate = data.taskDate instanceof Date ? data.taskDate : new Date(data.taskDate || Date.now());
+    const subtasks = data.subtasks || [];
 
     if (!title) {
-        alert("Please enter task title");
+        console.warn("saveNewTask: empty title");
         return;
     }
-
-    const taskDate = getSelectedDate();
-    const subtasks = extractSubtasks();
 
     const task = {
         _id: "task_" + new Date().getTime() + "_" + Math.random().toString(36).substring(2, 8),
@@ -33,60 +32,45 @@ export async function createTask() {
     try {
         await localDB.put(task);
         console.log("Task saved:", task);
-
-        document.getElementById("taskTitle").value = "";
-        document.getElementById("taskDescription").value = "";
-
-        closeModal();
+        // Ask UI to reload tasks for that date
         loadTasks(taskDate);
-
+        // ask modal to close (UI)
+        closeModal();
     } catch (err) {
         console.error("Error saving task:", err);
     }
 }
 
-export async function deleteTask(taskId) {
+// Update existing task
+export async function updateTaskById(taskId, data) {
     try {
         const task = await localDB.get(taskId);
-        task.deleted = true;
-        task.updatedAt = new Date().toISOString();
-
-        await localDB.put(task);
-        console.log("Task deleted:", task);
-
-        closeModal();
-        loadTasks(new Date(task.createdAt));
-
-    } catch (err) {
-        console.error("Error deleting task:", err);
-    }
-}
-
-export async function editTask(taskId) {
-    const title = document.getElementById("taskTitle").value.trim();
-    const description = document.getElementById("taskDescription").value.trim();
-
-    if (!title) {
-        alert("Please enter task title");
-        return;
-    }
-
-    const subtasks = extractSubtasks();
-
-    try {
-        const task = await localDB.get(taskId);
-        task.title = title;
-        task.description = description;
-        task.subtasks = subtasks;
+        task.title = data.title?.trim() || task.title;
+        task.description = data.description?.trim() ?? task.description;
+        task.subtasks = data.subtasks ?? task.subtasks;
         task.updatedAt = new Date().toISOString();
         await localDB.put(task);
         console.log("Task updated:", task);
 
+        loadTasks(new Date(task.createdAt));
         closeModal();
-        loadTasks(task.createdAt ? new Date(task.createdAt) : new Date());
-
     } catch (err) {
         console.error("Error updating task:", err);
+    }
+}
+
+// Soft-delete task
+export async function markTaskDeleted(taskId) {
+    try {
+        const task = await localDB.get(taskId);
+        task.deleted = true;
+        task.updatedAt = new Date().toISOString();
+        await localDB.put(task);
+        console.log("Task deleted:", task);
+        loadTasks(new Date(task.createdAt));
+        closeModal();
+    } catch (err) {
+        console.error("Error deleting task:", err);
     }
 }
 
@@ -104,14 +88,16 @@ function updateTaskProgress(taskItemElement, progress) {
     
     fill.style.width = progress + "%";
     
-    // Optional: change color based on progress
     if (progress === 100) {
-        fill.style.backgroundColor = "#bbbbbbff"; // when complete
+        fill.style.backgroundColor = "#bbbbbbff";
     } else if (progress > 0) {
-        fill.style.backgroundColor = "#A2A59D"; //  for in-progress
+        fill.style.backgroundColor = "#A2A59D";
     } else {
-        fill.style.backgroundColor = ""; // for not started
+        fill.style.backgroundColor = "";
     }
+
+    const txt = taskItemElement.querySelector('.progress-text');
+    if (txt) txt.textContent = progress + "%";
 }
 
 function renderSimpleTask(task) {
@@ -128,7 +114,6 @@ function renderSimpleTask(task) {
         </div>
     `;
 
-    // Checkbox handler
     const checkbox = item.querySelector(".task-main-checkbox");
     checkbox.addEventListener("change", async (e) => {
         try {
@@ -143,10 +128,9 @@ function renderSimpleTask(task) {
         }
     });
 
-    // Click to edit
     item.addEventListener('click', (e) => {
         if (e.target.tagName !== 'INPUT') {
-            openModalForEdit(task._id, task.title, task.description, []);
+            openModalForEdit(task._id, task.title, task.description, task.subtasks || []);
         }
     });
 
@@ -168,11 +152,11 @@ function renderTaskWithSubtasks(task) {
         </div>
         <div class="task-progress">
             <div class="task-progress-fill" style="width: ${progress}%"></div>
+            <div class="progress-text">${progress}%</div>
         </div>
         <div class="task-subtasks-toggle">
-            <span class="toggle-indicator">${task.subtasks[0]?.open === false
-                ? '<img src="/assets/icons/triangleFill.png" alt="Развернуть" class="toggle-icon">' 
-                : '<img src="/assets/icons/triangle.png" alt="Свернуть" class="toggle-icon">'}
+            <span class="toggle-indicator">
+                <img src="${task.subtasks[0]?.open === false ? '/assets/icons/triangleFill.png' : '/assets/icons/triangle.png'}" alt="Toggle" class="toggle-icon">
             </span>
         </div>
     `;
@@ -181,27 +165,27 @@ function renderTaskWithSubtasks(task) {
 
     const checkboxInput = item.querySelector(".task-main-checkbox");
 
+    // Prevent clicks inside subtasks from opening modal (we'll handle below)
+    item.addEventListener('click', (e) => {
+        // If click on input or inside subtasks list or on toggle, ignore opening
+        if (e.target.tagName === 'INPUT' || e.target.closest('.task-subtasks-list') || e.target.closest('.task-subtasks-toggle')) {
+            return;
+        }
+        openModalForEdit(task._id, task.title, task.description, task.subtasks || []);
+    });
+
     // MAIN CHECKBOX (affects all subtasks)
     checkboxInput.addEventListener("change", async (e) => {
         try {
             const fresh = await localDB.get(task._id);
             fresh.completed = e.target.checked;
-
             fresh.subtasks.forEach(st => st.completed = e.target.checked);
-
             fresh.updatedAt = new Date().toISOString();
             await localDB.put(fresh);
 
             loadTasks(new Date(task.createdAt));
         } catch (err) {
             console.error("Error updating task:", err);
-        }
-    });
-
-    // CLICK TO EDIT
-    item.addEventListener('click', (e) => {
-        if (e.target.tagName !== 'INPUT' && !e.target.closest('.task-subtasks-toggle')) {
-            openModalForEdit(task._id, task.title, task.description, task.subtasks);
         }
     });
 
@@ -219,7 +203,6 @@ function renderTaskWithSubtasks(task) {
             <span class="subtask-title">${subtask.title}</span>
         `;
 
-        // Subtask checkbox handler
         subtaskEl.querySelector(".subtask-checkbox").addEventListener("change", async (e) => {
             try {
                 const fresh = await localDB.get(task._id);
@@ -236,7 +219,6 @@ function renderTaskWithSubtasks(task) {
                 await localDB.put(fresh);
 
                 updateTaskProgress(item, newProgress);
-                item.querySelector('.progress-text').textContent = newProgress + "%";
                 checkboxInput.checked = allDone;
 
             } catch (err) {
@@ -283,6 +265,7 @@ function renderTaskWithSubtasks(task) {
 
 export async function loadTasks(filterDate = null) {
     const container = document.getElementById("taskContainer");
+    if (!container) return;
     container.innerHTML = "";
 
     try {
@@ -293,8 +276,7 @@ export async function loadTasks(filterDate = null) {
                 if (doc.deleted) return false;
                 if (doc.type === "note") return false;
                 if (doc.type === "weeklySummary") return false;
-
-                return doc._id.startsWith("task_");
+                return doc._id && doc._id.startsWith("task_");
             });
 
         if (filterDate) {
@@ -330,6 +312,20 @@ export async function loadTasks(filterDate = null) {
         console.error("Error loading tasks:", err);
     }
 }
+
+/* Event-driven bridge: слушаем события из modal.js */
+document.addEventListener('task:save', async (e) => {
+    await saveNewTask(e.detail);
+});
+
+document.addEventListener('task:update', async (e) => {
+    const { id, ...data } = e.detail;
+    await updateTaskById(id, data);
+});
+
+document.addEventListener('task:delete', async (e) => {
+    await markTaskDeleted(e.detail.id);
+});
 
 window.loadTasks = loadTasks;
 window.addEventListener('DOMContentLoaded', () => loadTasks(new Date()));
