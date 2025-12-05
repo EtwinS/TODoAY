@@ -1,16 +1,47 @@
-import { localDB } from "./pouchDB.js";
 import { setWeeklyReviewDay } from "./navbar.js";
 
 const optionsModal = document.getElementById('optionsModal');
 const settingsButton = document.getElementById('settingsButton');
 const saveButton = document.getElementById('saveOptions');
 
-
 // Store current state of options modal
 let isOptionsOpen = false;
 
+// Load options when modal opens
+async function loadOptions() {
+  try {
+    const result = await db.getTask('settings');
+    
+    if (result.success && result.task) {
+      const settings = result.task;
+      document.getElementById('optionsUsername').value = settings.username || '';
+      document.getElementById('optionsPassword').value = settings.password || '';
+      document.getElementById('optionsUrl').value = settings.url || '';
+      
+      // Set date if weekly review day exists
+      if (settings.weeklyReviewDay !== undefined) {
+        const date = new Date();
+        // Find next occurrence of this day of week
+        const currentDay = date.getDay();
+        let daysToAdd = settings.weeklyReviewDay - currentDay;
+        if (daysToAdd < 0) {
+          daysToAdd += 7;
+        }
+        const reviewDate = new Date(date);
+        reviewDate.setDate(reviewDate.getDate() + daysToAdd);
+        
+        const dateString = reviewDate.toISOString().split('T')[0];
+        document.getElementById('dayWeeklyReview').value = dateString;
+      }
+    }
+  } catch (err) {
+    console.log('No existing settings found:', err);
+  }
+}
+
 // Open Options modal when settings button is clicked
-settingsButton.addEventListener('click', () => {
+settingsButton.addEventListener('click', async () => {
+  await loadOptions();
   optionsModal.showModal();
   isOptionsOpen = true;
 });
@@ -34,26 +65,44 @@ saveButton.addEventListener('click', async () => {
     ? new Date(weeklyReviewDate).getDay()
     : 0; // Default to Sunday
 
-  const optionsData = {
-    _id: 'settings', // Required by PouchDB
-    username: username,
-    password: password,
-    url: url,
-    timestamp: new Date().toISOString(),
-    weeklyReviewDay: weeklyReviewDayIndex
-  };
-
   try {
-    // Try to get existing document to preserve _rev
-    let existingDoc;
-    try {
-      existingDoc = await localDB.get('settings');
-      optionsData._rev = existingDoc._rev;
-    } catch (e) {
-      // Document doesn't exist yet, that's fine
-    }
+    // Пытаемся получить существующие настройки
+    const getResult = await db.getTask('settings');
     
-    await localDB.put(optionsData);
+    if (getResult.success && getResult.task) {
+      // Настройки существуют, обновляем
+      const updateResult = await db.updateTask('settings', {
+        username: username,
+        password: password,
+        url: url,
+        timestamp: new Date().toISOString(),
+        weeklyReviewDay: weeklyReviewDayIndex
+      });
+      
+      if (updateResult.success) {
+        console.log('Options saved successfully');
+      } else {
+        console.error('Error updating options:', updateResult.error);
+      }
+    } else {
+      // Настройки не существуют, создаём новые
+      const addResult = await db.addTask('Settings', 'Application settings');
+      
+      if (addResult.success) {
+        // Обновляем с нужными полями
+        await db.updateTask(addResult.id, {
+          username: username,
+          password: password,
+          url: url,
+          timestamp: new Date().toISOString(),
+          weeklyReviewDay: weeklyReviewDayIndex
+        });
+        
+        console.log('Options created and saved successfully');
+      } else {
+        console.error('Error creating options:', addResult.error);
+      }
+    }
     
     // Update navbar with new weekly review day
     setWeeklyReviewDay(weeklyReviewDayIndex);

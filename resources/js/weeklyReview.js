@@ -1,4 +1,3 @@
-import { localDB } from "./pouchDB.js";
 import { getSelectedDate } from "./navbar.js";
 
 const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -101,9 +100,14 @@ class WeeklyReview {
     }
 
     try {
-      const result = await localDB.allDocs({ include_docs: true });
-      const tasks = result.rows
-        .map(row => row.doc)
+      const result = await db.getAllTasks();
+      
+      if (!result.success || !result.tasks) {
+        console.error("Error loading tasks:", result.error);
+        return stats;
+      }
+
+      const tasks = result.tasks
         .filter(doc => {
           if (doc.deleted) return false;
           if (doc.type !== undefined && doc.type !== "task") return false;
@@ -240,14 +244,16 @@ class WeeklyReview {
     
     try {
       const noteId = `note_${this.formatDate(dayDate)}`;
-      const doc = await localDB.get(noteId);
-      notesContainer.textContent = doc.content || "No notes for this day";
-    } catch (err) {
-      if (err.status === 404) {
-        notesContainer.textContent = "No notes for this day";
+      const result = await db.getTask(noteId);
+      
+      if (result.success && result.task) {
+        notesContainer.textContent = result.task.content || "No notes for this day";
       } else {
-        console.error("Error loading notes:", err);
+        notesContainer.textContent = "No notes for this day";
       }
+    } catch (err) {
+      console.error("Error loading notes:", err);
+      notesContainer.textContent = "No notes for this day";
     }
   }
 
@@ -259,10 +265,16 @@ class WeeklyReview {
     const summaryContainer = document.getElementById('lastWeekSummary');
     
     try {
-      const result = await localDB.allDocs({ include_docs: true });
-      const summary = result.rows
-        .map(row => row.doc)
-        .find(doc => doc.type === 'weeklySummary' && doc.weekStart === weekKey);
+      const result = await db.getAllTasks();
+      
+      if (!result.success || !result.tasks) {
+        summaryContainer.textContent = "No summary for last week";
+        return;
+      }
+
+      const summary = result.tasks.find(doc => 
+        doc.type === 'weeklySummary' && doc.weekStart === weekKey
+      );
       
       if (summary && summary.content) {
         summaryContainer.textContent = summary.content;
@@ -279,10 +291,16 @@ class WeeklyReview {
     const weekKey = this.formatDate(this.currentWeekStart);
     
     try {
-      const result = await localDB.allDocs({ include_docs: true });
-      const summary = result.rows
-        .map(row => row.doc)
-        .find(doc => doc.type === 'weeklySummary' && doc.weekStart === weekKey);
+      const result = await db.getAllTasks();
+      
+      if (!result.success || !result.tasks) {
+        this.summaryTextarea.value = "";
+        return;
+      }
+
+      const summary = result.tasks.find(doc =>
+        doc.type === 'weeklySummary' && doc.weekStart === weekKey
+      );
       
       if (summary && summary.content) {
         this.summaryTextarea.value = summary.content;
@@ -309,29 +327,34 @@ class WeeklyReview {
     const summaryId = `weeklySummary_${weekKey}`;
 
     try {
-      let doc;
-
-      try {
-        doc = await localDB.get(summaryId);
-        doc.content = content;
-        doc.updatedAt = new Date().toISOString();
-      } catch (err) {
-        if (err.status === 404) {
-          doc = {
-            _id: summaryId,
-            type: 'weeklySummary',
-            weekStart: weekKey,
-            content: content,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
+      // Пытаемся получить существующий summary
+      const getResult = await db.getTask(summaryId);
+      
+      if (getResult.success && getResult.task) {
+        // Summary существует, обновляем
+        const updateResult = await db.updateTask(summaryId, {
+          content: content,
+          updatedAt: new Date().toISOString()
+        });
+        
+        if (updateResult.success) {
+          console.log("Saved weekly summary:", summaryId);
         } else {
-          throw err;
+          console.error("Error updating summary:", updateResult.error);
+        }
+      } else {
+        // Summary не существует, создаём новый
+        const addResult = await db.addTask(
+          `Weekly Summary - ${weekKey}`,
+          content
+        );
+        
+        if (addResult.success) {
+          console.log("Created and saved weekly summary:", summaryId);
+        } else {
+          console.error("Error creating summary:", addResult.error);
         }
       }
-
-      await localDB.put(doc);
-      console.log("Saved weekly summary:", summaryId);
     } catch (err) {
       console.error("Error saving summary:", err);
     }

@@ -1,5 +1,7 @@
-import { localDB } from "./pouchDB.js";
-import { openModalForEdit, closeModal } from "./modal.js"; // modal.js теперь только экспортирует UI функции, не вызывает DB funcs
+import { openModalForEdit, closeModal } from "./modal.js";
+
+// Хранилище для всех задач в памяти
+let allTasks = [];
 
 // Generate unique ID for subtask
 function generateSubtaskId() {
@@ -19,22 +21,23 @@ export async function saveNewTask(data) {
     }
 
     const task = {
-        _id: "task_" + new Date().getTime() + "_" + Math.random().toString(36).substring(2, 8),
         title,
         description,
         createdAt: taskDate.toISOString(),
-        updatedAt: new Date().toISOString(),
         completed: false,
-        deleted: false,
         subtasks: subtasks
     };
 
     try {
-        await localDB.put(task);
-        console.log("Task saved:", task);
-        // Ask UI to reload tasks for that date
+        const result = await db.addTask(title, description);
+        
+        if (!result.success) {
+            console.error("Error saving task:", result.error);
+            return;
+        }
+        
+        console.log("Task saved:", result);
         loadTasks(taskDate);
-        // ask modal to close (UI)
         closeModal();
     } catch (err) {
         console.error("Error saving task:", err);
@@ -44,15 +47,28 @@ export async function saveNewTask(data) {
 // Update existing task
 export async function updateTaskById(taskId, data) {
     try {
-        const task = await localDB.get(taskId);
-        task.title = data.title?.trim() || task.title;
-        task.description = data.description?.trim() ?? task.description;
-        task.subtasks = data.subtasks ?? task.subtasks;
-        task.updatedAt = new Date().toISOString();
-        await localDB.put(task);
-        console.log("Task updated:", task);
+        const updates = {
+            title: data.title?.trim(),
+            description: data.description?.trim(),
+            subtasks: data.subtasks,
+            updatedAt: new Date().toISOString()
+        };
 
-        loadTasks(new Date(task.createdAt));
+        const result = await db.updateTask(taskId, updates);
+        
+        if (!result.success) {
+            console.error("Error updating task:", result.error);
+            return;
+        }
+
+        console.log("Task updated:", result);
+        
+        // Получаем обновленную задачу для определения даты
+        const taskResult = await db.getTask(taskId);
+        if (taskResult.success && taskResult.task) {
+            loadTasks(new Date(taskResult.task.createdAt));
+        }
+        
         closeModal();
     } catch (err) {
         console.error("Error updating task:", err);
@@ -62,12 +78,17 @@ export async function updateTaskById(taskId, data) {
 // Soft-delete task
 export async function markTaskDeleted(taskId) {
     try {
-        const task = await localDB.get(taskId);
-        task.deleted = true;
-        task.updatedAt = new Date().toISOString();
-        await localDB.put(task);
-        console.log("Task deleted:", task);
-        loadTasks(new Date(task.createdAt));
+        const result = await db.updateTask(taskId, { deleted: true });
+        
+        if (!result.success) {
+            console.error("Error deleting task:", result.error);
+            return;
+        }
+
+        console.log("Task deleted:", result);
+        
+        // Перезагружаем текущие задачи
+        loadTasks();
         closeModal();
     } catch (err) {
         console.error("Error deleting task:", err);
@@ -117,10 +138,10 @@ function renderSimpleTask(task) {
     const checkbox = item.querySelector(".task-main-checkbox");
     checkbox.addEventListener("change", async (e) => {
         try {
-            const fresh = await localDB.get(task._id);
-            fresh.completed = e.target.checked;
-            fresh.updatedAt = new Date().toISOString();
-            await localDB.put(fresh);
+            await db.updateTask(task._id, {
+                completed: e.target.checked,
+                updatedAt: new Date().toISOString()
+            });
 
             loadTasks(new Date(task.createdAt));
         } catch (err) {
@@ -190,11 +211,14 @@ function renderTaskWithSubtasks(task) {
 
     checkboxInput.addEventListener("change", async (e) => {
         try {
-            const fresh = await localDB.get(task._id);
-            fresh.completed = e.target.checked;
-            fresh.subtasks.forEach((st) => (st.completed = e.target.checked));
-            fresh.updatedAt = new Date().toISOString();
-            await localDB.put(fresh);
+            await db.updateTask(task._id, {
+                completed: e.target.checked,
+                subtasks: (task.subtasks || []).map(st => ({
+                    ...st,
+                    completed: e.target.checked
+                })),
+                updatedAt: new Date().toISOString()
+            });
 
             loadTasks(new Date(task.createdAt));
         } catch (err) {
@@ -219,22 +243,20 @@ function renderTaskWithSubtasks(task) {
             .querySelector(".subtask-checkbox")
             .addEventListener("change", async (e) => {
                 try {
-                    const fresh = await localDB.get(task._id);
-                    const targetSubtask = fresh.subtasks.find(
-                        (st) => st.id === subtask.id
-                    );
-                    if (targetSubtask) {
-                        targetSubtask.completed = e.target.checked;
-                    }
-
-                    const newProgress = getSubtaskProgress(fresh.subtasks);
-                    const allDone = fresh.subtasks.every(
-                        (st) => st.completed
+                    const updatedSubtasks = task.subtasks.map(st =>
+                        st.id === subtask.id 
+                            ? { ...st, completed: e.target.checked }
+                            : st
                     );
 
-                    fresh.completed = allDone;
-                    fresh.updatedAt = new Date().toISOString();
-                    await localDB.put(fresh);
+                    const newProgress = getSubtaskProgress(updatedSubtasks);
+                    const allDone = updatedSubtasks.every(st => st.completed);
+
+                    await db.updateTask(task._id, {
+                        completed: allDone,
+                        subtasks: updatedSubtasks,
+                        updatedAt: new Date().toISOString()
+                    });
 
                     updateTaskProgress(item, newProgress);
                     checkboxInput.checked = allDone;
@@ -262,10 +284,13 @@ function renderTaskWithSubtasks(task) {
         }
 
         try {
-            const fresh = await localDB.get(task._id);
-            fresh.subtasks.forEach((st) => (st.open = !openNow));
-            fresh.updatedAt = new Date().toISOString();
-            await localDB.put(fresh);
+            await db.updateTask(task._id, {
+                subtasks: (task.subtasks || []).map(st => ({
+                    ...st,
+                    open: !openNow
+                })),
+                updatedAt: new Date().toISOString()
+            });
         } catch (err) {
             console.error("Error updating open state:", err);
         }
@@ -280,9 +305,18 @@ export async function loadTasks(filterDate = null) {
     container.innerHTML = "";
 
     try {
-        const result = await localDB.allDocs({ include_docs: true });
-        let tasks = result.rows
-            .map(row => row.doc)
+        const result = await db.getAllTasks();
+        
+        if (!result.success || !result.tasks) {
+            console.error("Error loading tasks:", result.error);
+            const emptyMsg = document.createElement("div");
+            emptyMsg.className = "empty-message";
+            emptyMsg.textContent = "Error loading tasks";
+            container.appendChild(emptyMsg);
+            return;
+        }
+
+        let tasks = result.tasks
             .filter(doc => {
                 if (doc.deleted) return false;
                 if (doc.type === "note") return false;
@@ -302,6 +336,7 @@ export async function loadTasks(filterDate = null) {
         }
 
         tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        allTasks = tasks;
 
         if (tasks.length === 0) {
             const emptyMsg = document.createElement("div");
@@ -339,4 +374,7 @@ document.addEventListener('task:delete', async (e) => {
 });
 
 window.loadTasks = loadTasks;
-window.addEventListener('DOMContentLoaded', () => loadTasks(new Date()));
+window.addEventListener('DOMContentLoaded', () => {
+    // Задержка чтобы дождаться инициализации db
+    setTimeout(() => loadTasks(), 500);
+});

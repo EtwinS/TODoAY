@@ -1,6 +1,6 @@
 const modal = document.getElementById('modal');
 const openButton = document.getElementById('openModal');
-const createButton = document.getElementById('createTaskBtn') || document.getElementById('closeModal');
+const createButton = document.getElementById('closeModal'); // Это кнопка "Create/Save"
 const deleteButton = document.getElementById('deleteTaskBtn');
 const addSubtaskBtn = document.getElementById('addSubtaskBtn');
 const subtasksWrapper = document.querySelector('.subtasks-wrapper');

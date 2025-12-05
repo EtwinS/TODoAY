@@ -1,6 +1,5 @@
 import { loadTasks } from "./task.js";
 import { notesSidebar } from "./notesSidebar.js";
-import { localDB } from "./pouchDB.js";
 
 // State management
 let currentDate = new Date();
@@ -23,13 +22,17 @@ async function initializeNavbar() {
 // Load weekly review day from storage
 async function loadWeeklyReviewDay() {
   try {
-    const doc = await localDB.get('settings'); // Use same DB as options.js
-    if (doc.weeklyReviewDay !== undefined) {
-      weeklyReviewDay = doc.weeklyReviewDay;
+    // Пытаемся получить настройки с ID 'settings'
+    const result = await db.getTask('settings');
+    
+    if (result.success && result.task && result.task.weeklyReviewDay !== undefined) {
+      weeklyReviewDay = result.task.weeklyReviewDay;
+      console.log('Loaded weekly review day:', weeklyReviewDay);
+    } else {
+      console.log('Settings not found, using default weekly review day (Sunday)');
     }
   } catch (e) {
-    // Settings not found, weeklyReviewDay remains 0 (Sunday)
-    console.log('Settings not found, using default weekly review day (Sunday)');
+    console.log('Error loading settings:', e);
   }
 }
 

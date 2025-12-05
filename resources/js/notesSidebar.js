@@ -1,5 +1,3 @@
-import { localDB } from "./pouchDB.js";
-
 class NotesSidebar {
     constructor() {
         this.notesTextarea = document.getElementById('notesTextarea');
@@ -38,17 +36,19 @@ class NotesSidebar {
         this.currentNoteId = this.getNoteId(date);
 
         try {
-            const doc = await localDB.get(this.currentNoteId);
-            this.notesTextarea.value = doc.content || "";
-            console.log("Loaded:", this.currentNoteId);
-        } catch (err) {
-            if (err.status === 404) {
+            const result = await db.getTask(this.currentNoteId);
+            
+            if (result.success && result.task) {
+                this.notesTextarea.value = result.task.content || "";
+                console.log("Loaded:", this.currentNoteId);
+            } else {
                 // No note for this day yet
                 this.notesTextarea.value = "";
                 console.log("No note found for this day.");
-            } else {
-                console.error("Error loading note:", err);
             }
+        } catch (err) {
+            console.error("Error loading note:", err);
+            this.notesTextarea.value = "";
         }
     }
 
@@ -58,28 +58,36 @@ class NotesSidebar {
         const noteId = this.currentNoteId || this.getNoteId(this.currentDate);
 
         try {
-            let doc;
-
-            try {
-                doc = await localDB.get(noteId);
-                doc.content = content;
-                doc.updatedAt = new Date().toISOString();
-            } catch (err) {
-                if (err.status === 404) {
-                    doc = {
-                        _id: noteId,
-                        type: "note",
-                        noteDate: noteId.replace("note_", ""),
-                        content: content,
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString()
-                    };
+            // Пытаемся получить существующую заметку
+            const getResult = await db.getTask(noteId);
+            
+            if (getResult.success && getResult.task) {
+                // Заметка существует, обновляем
+                const updateResult = await db.updateTask(noteId, {
+                    content: content,
+                    updatedAt: new Date().toISOString()
+                });
+                
+                if (updateResult.success) {
+                    console.log("Saved:", noteId);
                 } else {
-                    throw err;
+                    console.error("Error updating note:", updateResult.error);
+                }
+            } else {
+                // Заметка не существует, создаём новую
+                const addResult = await db.addTask(
+                    `Note for ${this.getNoteId(this.currentDate).replace("note_", "")}`,
+                    content
+                );
+                
+                if (addResult.success) {
+                    console.log("Created and saved:", noteId);
+                    // Обновляем id если изменился
+                    this.currentNoteId = addResult.id;
+                } else {
+                    console.error("Error creating note:", addResult.error);
                 }
             }
-            await localDB.put(doc);
-            console.log("Saved:", noteId);
         } catch (err) {
             console.error("Error saving note:", err);
         }

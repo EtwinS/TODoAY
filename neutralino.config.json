@@ -8,6 +8,13 @@
   "url": "/",
   "enableServer": true,
   "enableNativeAPI": true,
+  "enableExtensions": true,
+  "extensions": [
+    {
+      "id": "js.neutralino.pouchdb",
+      "command": "node ${NL_PATH}/extensions/pouchdb/main.js"
+    }
+  ],
   "tokenSecurity": "one-time",
   "logging": {
     "enabled": true,
