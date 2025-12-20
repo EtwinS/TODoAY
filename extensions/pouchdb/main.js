@@ -1,189 +1,273 @@
-const fs = require('fs');
-const path = require('path');
-const process = require('process');
-const WS = require('websocket').w3cwebsocket;
-const { v4: uuidv4 } = require('uuid');
+const http = require('http');
+const url = require('url');
 const PouchDB = require('pouchdb');
+const path = require('path');
+const fs = require('fs');
 
-// Получаем параметры подключения из stdin
-const processInput = JSON.parse(fs.readFileSync(process.stdin.fd, 'utf-8'));
-const NL_PORT = processInput.nlPort;
-const NL_TOKEN = processInput.nlToken;
-const NL_CTOKEN = processInput.nlConnectToken;
-const NL_EXTID = processInput.nlExtensionId;
+function log(msg) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${msg}`);
+}
 
-console.log(`[${NL_EXTID}] Starting PouchDB extension...`);
-console.log(`[${NL_EXTID}] Connecting to port ${NL_PORT}`);
+log('[PouchDB Extension] Process starting...');
+log(`[PouchDB Extension] CWD: ${process.cwd()}`);
 
 // Инициализируем PouchDB с локальной директорией
 const dbPath = path.join(process.cwd(), 'data', 'db');
-console.log(`[${NL_EXTID}] DB path: ${dbPath}`);
 
 if (!fs.existsSync(dbPath)) {
   fs.mkdirSync(dbPath, { recursive: true });
-  console.log(`[${NL_EXTID}] Created DB directory`);
+}
+
+// Очищаем LOCK файл если он остался с предыдущего запуска
+const lockFile = path.join(dbPath, 'LOCK');
+if (fs.existsSync(lockFile)) {
+  try {
+    fs.unlinkSync(lockFile);
+    log('[PouchDB Extension] Cleaned up stale LOCK file');
+  } catch (e) {
+    log('[PouchDB Extension] Could not clean LOCK file: ' + e.message);
+  }
 }
 
 const db = new PouchDB(dbPath);
-let client;
+const PORT = 8490;
 
-// Функция для отправки сообщений в приложение
-function sendToApp(event, data) {
-  if (client && client.readyState === WS.OPEN) {
-    try {
-      client.send(
-        JSON.stringify({
-          id: uuidv4(),
-          method: 'app.broadcast',
-          accessToken: NL_TOKEN,
-          data: { 
-            event: 'dbResponse',
-            data: { event, data }
-          },
-        })
-      );
-      console.log(`[${NL_EXTID}] Sent response: ${event}`);
-    } catch (error) {
-      console.error(`[${NL_EXTID}] Error sending message:`, error.message);
-    }
-  } else {
-    console.warn(`[${NL_EXTID}] Client not connected, cannot send: ${event}`);
-  }
-}
+log('[PouchDB Extension] Starting...');
+log('[PouchDB Extension] DB path: ' + dbPath);
+
+// Обработка закрытия stdin (когда Neutralino хочет остановить процесс)
+process.stdin.on('end', () => {
+  log('[PouchDB Extension] stdin ended - shutting down');
+  process.exit(0);
+});
+
+process.stdin.on('close', () => {
+  log('[PouchDB Extension] stdin closed - shutting down');
+  process.exit(0);
+});
 
 // Функции для работы с БД
 async function addTask(task) {
   try {
-    console.log(`[${NL_EXTID}] addTask called:`, task);
-    const result = await db.post({
+    log('[PouchDB] addTask:', JSON.stringify(task));
+    const { v4: uuidv4 } = require('uuid');
+    const taskId = `task_${uuidv4()}`;
+    
+    const result = await db.put({
+      _id: taskId,
       ...task,
+      type: 'task',
       createdAt: new Date().toISOString(),
       completed: false,
     });
-    console.log(`[${NL_EXTID}] Task added with id: ${result.id}`);
+    log('[PouchDB] addTask success: ' + taskId);
     return { success: true, id: result.id, rev: result.rev };
   } catch (error) {
-    console.error(`[${NL_EXTID}] addTask error:`, error.message);
+    log('[PouchDB] addTask error: ' + error.message);
     return { success: false, error: error.message };
   }
 }
 
 async function updateTask(id, updates) {
   try {
-    console.log(`[${NL_EXTID}] updateTask called: id=${id}`, updates);
+    log('[PouchDB] updateTask: ' + id);
     const doc = await db.get(id);
     const result = await db.put({
       ...doc,
       ...updates,
       updatedAt: new Date().toISOString(),
     });
-    console.log(`[${NL_EXTID}] Task updated: ${id}`);
     return { success: true, id: result.id, rev: result.rev };
   } catch (error) {
-    console.error(`[${NL_EXTID}] updateTask error:`, error.message);
+    log('[PouchDB] updateTask error: ' + error.message);
     return { success: false, error: error.message };
   }
 }
 
 async function deleteTask(id) {
   try {
-    console.log(`[${NL_EXTID}] deleteTask called: id=${id}`);
+    log('[PouchDB] deleteTask: ' + id);
     const doc = await db.get(id);
     await db.remove(doc);
-    console.log(`[${NL_EXTID}] Task deleted: ${id}`);
     return { success: true };
   } catch (error) {
-    console.error(`[${NL_EXTID}] deleteTask error:`, error.message);
+    log('[PouchDB] deleteTask error: ' + error.message);
     return { success: false, error: error.message };
   }
 }
 
 async function getAllTasks() {
   try {
-    console.log(`[${NL_EXTID}] getAllTasks called`);
+    log('[PouchDB] getAllTasks');
     const result = await db.allDocs({ include_docs: true });
     const tasks = result.rows.map(row => row.doc);
-    console.log(`[${NL_EXTID}] Retrieved ${tasks.length} tasks`);
+    log('[PouchDB] Retrieved ' + tasks.length + ' tasks');
     return { success: true, tasks };
   } catch (error) {
-    console.error(`[${NL_EXTID}] getAllTasks error:`, error.message);
+    log('[PouchDB] getAllTasks error: ' + error.message);
+    if (error.message.includes('LOCK')) {
+      log('[PouchDB] LOCK conflict detected, retrying...');
+      await new Promise(r => setTimeout(r, 500));
+      return getAllTasks();
+    }
     return { success: false, error: error.message };
   }
 }
 
 async function getTask(id) {
   try {
-    console.log(`[${NL_EXTID}] getTask called: id=${id}`);
+    log('[PouchDB] getTask: ' + id);
     const doc = await db.get(id);
     return { success: true, task: doc };
   } catch (error) {
-    console.error(`[${NL_EXTID}] getTask error:`, error.message);
+    log('[PouchDB] getTask error: ' + error.message);
     return { success: false, error: error.message };
   }
 }
 
-// Подключение к Neutralino серверу
-client = new WS(
-  `ws://localhost:${NL_PORT}?extensionId=${NL_EXTID}&connectToken=${NL_CTOKEN}`
-);
+// HTTP сервер с обработкой ошибок
+const server = http.createServer(async (req, res) => {
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
 
-client.onerror = (error) => {
-  console.error(`[${NL_EXTID}] Connection error:`, error.message);
-};
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
 
-client.onopen = () => {
-  console.log(`[${NL_EXTID}] ✓ Connected to Neutralino server`);
-  sendToApp('extensionReady', { message: 'PouchDB extension is ready' });
-};
-
-client.onclose = () => {
-  console.log(`[${NL_EXTID}] Connection closed, exiting extension`);
-  process.exit(0);
-};
-
-client.onmessage = async (e) => {
-  try {
-    const { event, data } = JSON.parse(e.data);
-    console.log(`[${NL_EXTID}] Received event: ${event}`);
-
-    let response;
-
-    switch (event) {
-      case 'addTask':
-        response = await addTask(data);
-        break;
-      case 'updateTask':
-        response = await updateTask(data.id, data.updates);
-        break;
-      case 'deleteTask':
-        response = await deleteTask(data.id);
-        break;
-      case 'getAllTasks':
-        response = await getAllTasks();
-        break;
-      case 'getTask':
-        response = await getTask(data.id);
-        break;
-      default:
-        console.warn(`[${NL_EXTID}] Unknown event: ${event}`);
-        response = { success: false, error: `Unknown event: ${event}` };
-    }
-
-    sendToApp(`${event}Response`, response);
-  } catch (error) {
-    console.error(`[${NL_EXTID}] Message processing error:`, error.message);
-    sendToApp('error', { error: error.message });
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
   }
-};
+
+  let body = '';
+  
+  req.on('error', (err) => {
+    log('[PouchDB Extension] Request error: ' + err.message);
+    if (!res.writableEnded) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ success: false, error: 'Request error' }));
+    }
+  });
+
+  req.on('data', chunk => {
+    try {
+      body += chunk.toString();
+    } catch (e) {
+      log('[PouchDB Extension] Data parsing error: ' + e.message);
+    }
+  });
+
+  req.on('end', async () => {
+    try {
+      let response = { success: false, error: 'Unknown endpoint' };
+
+      if (pathname === '/ping') {
+        response = { success: true, message: 'pong' };
+      } else if (pathname === '/add-task' && req.method === 'POST') {
+        try {
+          const data = body ? JSON.parse(body) : {};
+          response = await addTask(data);
+        } catch (e) {
+          log('[PouchDB Extension] Parse error for /add-task: ' + e.message);
+          response = { success: false, error: 'Invalid JSON: ' + e.message };
+        }
+      } else if (pathname === '/get-task' && req.method === 'POST') {
+        try {
+          const data = body ? JSON.parse(body) : {};
+          response = await getTask(data.id);
+        } catch (e) {
+          log('[PouchDB Extension] Parse error for /get-task: ' + e.message);
+          response = { success: false, error: 'Invalid JSON: ' + e.message };
+        }
+      } else if (pathname === '/update-task' && req.method === 'POST') {
+        try {
+          const data = body ? JSON.parse(body) : {};
+          response = await updateTask(data.id, data);
+        } catch (e) {
+          log('[PouchDB Extension] Parse error for /update-task: ' + e.message);
+          response = { success: false, error: 'Invalid JSON: ' + e.message };
+        }
+      } else if (pathname === '/delete-task' && req.method === 'POST') {
+        try {
+          const data = body ? JSON.parse(body) : {};
+          response = await deleteTask(data.id);
+        } catch (e) {
+          log('[PouchDB Extension] Parse error for /delete-task: ' + e.message);
+          response = { success: false, error: 'Invalid JSON: ' + e.message };
+        }
+      } else if (pathname === '/get-all-tasks' && req.method === 'POST') {
+        response = await getAllTasks();
+      } else if (pathname === '/shutdown' && req.method === 'POST') {
+        response = { success: true, message: 'Shutting down' };
+        // Отправляем ответ и затем завершаем процесс
+        res.writeHead(200);
+        res.end(JSON.stringify(response));
+        log('[PouchDB Extension] Shutdown requested');
+        setTimeout(() => {
+          log('[PouchDB Extension] Exiting...');
+          process.exit(0);
+        }, 100);
+        return;
+      }
+
+      if (!res.writableEnded) {
+        res.writeHead(200);
+        res.end(JSON.stringify(response));
+      }
+    } catch (error) {
+      log('[PouchDB Extension] Handler error: ' + error.message);
+      if (!res.writableEnded) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ success: false, error: error.message }));
+      }
+    }
+  });
+});
+
+server.on('error', (err) => {
+  log('[PouchDB Extension] Server error: ' + err.message);
+  if (err.code === 'EADDRINUSE') {
+    log('[PouchDB Extension] Port ' + PORT + ' is already in use');
+  }
+});
+
+server.listen(PORT, '127.0.0.1', () => {
+  log(`[PouchDB Extension] ✓ Server listening on 127.0.0.1:${PORT}`);
+});
 
 process.on('SIGINT', () => {
-  console.log(`[${NL_EXTID}] Received SIGINT, exiting gracefully`);
-  process.exit(0);
+  log('[PouchDB Extension] SIGINT received - shutting down gracefully...');
+  server.close(() => {
+    log('[PouchDB Extension] Server closed');
+    process.exit(0);
+  });
+  // Форсированный выход через 5 секунд если graceful shutdown не сработал
+  setTimeout(() => {
+    log('[PouchDB Extension] Forced exit');
+    process.exit(0);
+  }, 5000);
 });
 
 process.on('SIGTERM', () => {
-  console.log(`[${NL_EXTID}] Received SIGTERM, exiting gracefully`);
-  process.exit(0);
+  log('[PouchDB Extension] SIGTERM received - shutting down gracefully...');
+  server.close(() => {
+    log('[PouchDB Extension] Server closed');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    log('[PouchDB Extension] Forced exit');
+    process.exit(0);
+  }, 5000);
 });
 
-console.log(`[${NL_EXTID}] PouchDB extension initialized successfully`);
+process.on('uncaughtException', (err) => {
+  log('[PouchDB Extension] Uncaught exception: ' + err.message);
+  log('[PouchDB Extension] Stack: ' + err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  log('[PouchDB Extension] Unhandled rejection: ' + reason);
+});

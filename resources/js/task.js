@@ -1,35 +1,37 @@
 import { openModalForEdit, closeModal } from "./modal.js";
 
-// Хранилище для всех задач в памяти
 let allTasks = [];
+const EXTENSION_PORT = 8490;
 
-// Generate unique ID for subtask
-function generateSubtaskId() {
-    return "subtask_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
+// Хелпер для запросов к расширению
+async function callExtension(endpoint, method = 'GET', data = null, queryParams = '') {
+    const url = `http://localhost:${EXTENSION_PORT}${endpoint}${queryParams}`;
+    const options = {
+        method: method,
+        headers: { 'Content-Type': 'application/json' }
+    };
+    if (data) {
+        options.body = JSON.stringify(data);
+    }
+    const response = await fetch(url, options);
+    return response.json();
 }
 
 // Save a new task given data (used by event listener)
 export async function saveNewTask(data) {
     const title = data.title?.trim();
     const description = data.description?.trim() || "";
-    const taskDate = data.taskDate instanceof Date ? data.taskDate : new Date(data.taskDate || Date.now());
-    const subtasks = data.subtasks || [];
 
     if (!title) {
         console.warn("saveNewTask: empty title");
         return;
     }
 
-    const task = {
-        title,
-        description,
-        createdAt: taskDate.toISOString(),
-        completed: false,
-        subtasks: subtasks
-    };
-
     try {
-        const result = await db.addTask(title, description);
+        const result = await callExtension('/add-task', 'POST', {
+            title: title,
+            description: description
+        });
         
         if (!result.success) {
             console.error("Error saving task:", result.error);
@@ -37,7 +39,7 @@ export async function saveNewTask(data) {
         }
         
         console.log("Task saved:", result);
-        loadTasks(taskDate);
+        loadTasks();
         closeModal();
     } catch (err) {
         console.error("Error saving task:", err);
@@ -47,14 +49,12 @@ export async function saveNewTask(data) {
 // Update existing task
 export async function updateTaskById(taskId, data) {
     try {
-        const updates = {
+        const result = await callExtension(`/update-task?id=${taskId}`, 'PUT', {
             title: data.title?.trim(),
             description: data.description?.trim(),
             subtasks: data.subtasks,
-            updatedAt: new Date().toISOString()
-        };
-
-        const result = await db.updateTask(taskId, updates);
+            completed: data.completed
+        });
         
         if (!result.success) {
             console.error("Error updating task:", result.error);
@@ -62,13 +62,7 @@ export async function updateTaskById(taskId, data) {
         }
 
         console.log("Task updated:", result);
-        
-        // Получаем обновленную задачу для определения даты
-        const taskResult = await db.getTask(taskId);
-        if (taskResult.success && taskResult.task) {
-            loadTasks(new Date(taskResult.task.createdAt));
-        }
-        
+        loadTasks();
         closeModal();
     } catch (err) {
         console.error("Error updating task:", err);
@@ -78,7 +72,9 @@ export async function updateTaskById(taskId, data) {
 // Soft-delete task
 export async function markTaskDeleted(taskId) {
     try {
-        const result = await db.updateTask(taskId, { deleted: true });
+        const result = await callExtension(`/update-task?id=${taskId}`, 'PUT', {
+            deleted: true
+        });
         
         if (!result.success) {
             console.error("Error deleting task:", result.error);
@@ -86,8 +82,6 @@ export async function markTaskDeleted(taskId) {
         }
 
         console.log("Task deleted:", result);
-        
-        // Перезагружаем текущие задачи
         loadTasks();
         closeModal();
     } catch (err) {
@@ -305,7 +299,7 @@ export async function loadTasks(filterDate = null) {
     container.innerHTML = "";
 
     try {
-        const result = await db.getAllTasks();
+        const result = await callExtension('/get-all-tasks');
         
         if (!result.success || !result.tasks) {
             console.error("Error loading tasks:", result.error);

@@ -12,7 +12,8 @@
   "extensions": [
     {
       "id": "js.neutralino.pouchdb",
-      "command": "node ${NL_PATH}/extensions/pouchdb/main.js"
+      "command": "node \"${NL_PATH}/extensions/pouchdb/main.js\"",
+      "timeout": 3000
     }
   ],
   "tokenSecurity": "one-time",
@@ -23,7 +24,9 @@
   "nativeAllowList": [
     "app.*",
     "os.*",
-    "debug.log"
+    "debug.log",
+    "filesystem.*",
+    "extensions.*"
   ],
   "globalVariables": {
     "TEST1": "Hello",
@@ -52,7 +55,12 @@
       "maximize": false,
       "hidden": false,
       "resizable": true,
-      "exitProcessOnClose": false
+      "exitProcessOnClose": false,
+      "nativeAllowList": [
+        "filesystem.*",
+        "extensions.*",
+        "app.*"
+      ]
     },
     "browser": {
       "globalVariables": {

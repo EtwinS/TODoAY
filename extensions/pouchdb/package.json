@@ -1,11 +1,10 @@
 {
-  "name": "neutralino-pouchdb-extension",
+  "name": "pouchdb-extension",
   "version": "1.0.0",
-  "description": "PouchDB extension for Neutralino.js TODO app",
+  "description": "PouchDB extension for Neutralino",
   "main": "main.js",
   "dependencies": {
-    "pouchdb": "^9.0.0",
-    "websocket": "^1.0.34",
+    "pouchdb": "^8.0.1",
     "uuid": "^9.0.0"
   }
 }

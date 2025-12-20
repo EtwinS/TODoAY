@@ -4,16 +4,21 @@ Neutralino.events.on('ready', async () => {
   console.log('Neutralino is ready');
   
   // Инициализируем БД
-  const dbReady = await db.init();
-  if (!dbReady) {
-    console.error('Failed to initialize database');
-    return;
+  try {
+    const dbReady = await db.init();
+    if (!dbReady) {
+      console.error('Failed to initialize database');
+      return;
+    }
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Database init error:', error);
   }
-  
-  console.log('Database initialized successfully');
-  // Здесь будет остальной твой код инициализации приложения
 });
 
-Neutralino.events.on('windowClose', () => {
-  Neutralino.app.exit();
+Neutralino.events.on('windowClose', async () => {
+  console.log('Window close event - calling cleanup');
+  if (window.cleanup) {
+    await window.cleanup();
+  }
 });
